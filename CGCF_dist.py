@@ -152,22 +152,16 @@ def _create_bpr_loss(users, pos_items, neg_items, decay):
 
     return mf_loss, emb_loss, reg_loss
 
-def build_model(data_config, pretrain_data):
+def build_model(users, pos_items, neg_items, node_dropout, mess_dropout, data_config, pretrain_data):
+    print('.........', tf.get_variable_scope().name)
     n_users = data_config['n_users']
     n_items = data_config['n_items']
     n_fold = 100
     norm_adj = data_config['norm_adj']
-    n_nonzero_elems = norm_adj.count_nonzero()
+    # n_nonzero_elems = norm_adj.count_nonzero()
     n_layers = len(eval(args.layer_size))
-    regs = eval(args.regs)
-    decay = regs[0]
-
-    users = tf.placeholder(tf.int32, shape=(None,))
-    pos_items = tf.placeholder(tf.int32, shape=(None,))
-    neg_items = tf.placeholder(tf.int32, shape=(None,))
-
-    node_dropout = tf.placeholder(tf.float32, shape=[None])
-    mess_dropout = tf.placeholder(tf.float32, shape=[None])
+    # regs = eval(args.regs)
+    # decay = regs[0]
 
     weights = _init_weights(pretrain_data, n_users, n_items, n_layers)
 
@@ -182,9 +176,8 @@ def build_model(data_config, pretrain_data):
     neg_i_g_embeddings = tf.nn.embedding_lookup(ia_embeddings, neg_items)
     batch_ratings = tf.matmul(u_g_embeddings, pos_i_g_embeddings, transpose_a=False, transpose_b=True)
 
-    mf_loss, emb_loss, reg_loss = _create_bpr_loss(u_g_embeddings, pos_i_g_embeddings, neg_i_g_embeddings, decay)
-    loss = mf_loss + emb_loss + reg_loss
-    return [users, pos_items, neg_items, node_dropout, mess_dropout], batch_ratings, [loss, mf_loss, emb_loss, reg_loss]
+    return batch_ratings, [u_g_embeddings, pos_i_g_embeddings, neg_i_g_embeddings]
+
 
 def load_pretrained_data():
     pretrain_path = '%spretrain/%s/%s.npz' % (args.proj_path, args.dataset, 'embedding')
@@ -195,9 +188,41 @@ def load_pretrained_data():
         pretrain_data = None
     return pretrain_data
 
+
+def get_available_gpus():
+    from tensorflow.python.client import device_lib as _device_lib
+    local_device_protos = _device_lib.list_local_devices()
+    return [x.name for x in local_device_protos if x.device_type == 'GPU']
+
+def assign_to_device(device, ps_device='/cpu:0'):
+    PS_OPS = ['Variable', 'VariableV2', 'AutoReloadVariable']
+    def _assign(op):
+        node_def = op if isinstance(op, tf.NodeDef) else op.node_def
+        if node_def.op in PS_OPS:
+            return "/" + ps_device
+        else:
+            return device
+    return _assign
+
+def average_gradients(tower_grads):
+    average_grads = []
+    for grad_and_vars in zip(*tower_grads):
+        grads = []
+        for g, _ in grad_and_vars:
+            expend_g = tf.expand_dims(g, 0)
+            grads.append(expend_g)
+        grad = tf.concat(grads, 0)
+        grad = tf.reduce_mean(grad, 0)
+        v = grad_and_vars[0][1]
+        grad_and_var = (grad, v)
+        average_grads.append(grad_and_var)
+    return average_grads
+
+
 if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_ids)
     print(args)
+    num_gpus = len(get_available_gpus())
 
     model_type = 'ngcf' + '_%s_%s_l%d' % (args.adj_type, args.alg_type, len(eval(args.layer_size)))
     config = dict()
@@ -223,10 +248,36 @@ if __name__ == '__main__':
     else:
         pretrain_data = None
 
-    placeholders, batch_ratings, losses = build_model(config, pretrain_data)
-    users, pos_items, neg_items, node_dropout, mess_dropout = placeholders
-    opt_loss, opt_mf_loss, opt_emb_loss, opt_reg_loss = losses
-    opt = tf.train.AdamOptimizer(learning_rate=args.lr).minimize(opt_loss)
+    tower_grads = []
+    users = tf.placeholder(tf.int32, shape=(None,))
+    pos_items = tf.placeholder(tf.int32, shape=(None,))
+    neg_items = tf.placeholder(tf.int32, shape=(None,))
+    node_dropout = tf.placeholder(tf.float32, shape=[None])
+    mess_dropout = tf.placeholder(tf.float32, shape=[None])
+    opt = tf.train.AdamOptimizer(args.lr)
+    per_gpu_batch = args.batch_size // num_gpus
+
+    with tf.variable_scope(tf.get_variable_scope()):
+        with tf.device("/gpu:0"):
+            for i in range(num_gpus):
+                with tf.device(assign_to_device('/gpu:{}'.format(i), ps_device='/gpu:0')):
+                    with tf.variable_scope("fuck", reuse=i>0):
+                        _users = users[i * per_gpu_batch:(i + 1) * per_gpu_batch]
+                        _pos_items = pos_items[i * per_gpu_batch:(i + 1) * per_gpu_batch]
+                        _neg_items = neg_items[i * per_gpu_batch:(i + 1) * per_gpu_batch]
+                        batch_ratings, embs_for_loss = build_model(_users, _pos_items,
+                                                                   _neg_items, node_dropout, mess_dropout, config,
+                                                                   pretrain_data)
+
+                        decay = eval(args.regs)[0]
+                        opt_mf_loss, opt_emb_loss, opt_reg_loss = _create_bpr_loss(embs_for_loss[0], embs_for_loss[1],
+                                                                                   embs_for_loss[2], decay)
+                        opt_loss = opt_mf_loss + opt_emb_loss + opt_reg_loss
+                        grads = opt.compute_gradients(opt_loss)
+                        print(grads[0][0])
+                        tower_grads.append([g for g in grads if g[0] is not None])
+    grads = average_gradients(tower_grads)
+    train_op = opt.apply_gradients(grads)
 
     saver = tf.train.Saver()
     config = tf.ConfigProto()
@@ -262,7 +313,7 @@ if __name__ == '__main__':
             # get the performance from pretrained model.
             if args.report != 1:
                 users_to_test = list(data_generator.test_set.keys())
-                ret = test(sess, placeholders, batch_ratings, users_to_test, drop_flag=True)
+                ret = test(sess, [users, pos_items, neg_items, node_dropout, mess_dropout], batch_ratings, users_to_test, drop_flag=True)
                 cur_best_pre_0 = ret['recall'][0]
 
                 pretrain_ret = 'pretrained model recall=[%.5f, %.5f], precision=[%.5f, %.5f], hit=[%.5f, %.5f],' \
@@ -299,7 +350,7 @@ if __name__ == '__main__':
 
         for idx in range(n_batch):
             td_users, td_pos_items, td_neg_items = train_dataset[idx]
-            _, batch_loss, batch_mf_loss, batch_emb_loss, batch_reg_loss = sess.run([opt, opt_loss, opt_mf_loss, opt_emb_loss, opt_reg_loss],
+            _, batch_loss, batch_mf_loss, batch_emb_loss, batch_reg_loss = sess.run([train_op, opt_loss, opt_mf_loss, opt_emb_loss, opt_reg_loss],
                                feed_dict={users: td_users, pos_items: td_pos_items,
                                           node_dropout: eval(args.node_dropout),
                                           mess_dropout: eval(args.mess_dropout),
@@ -323,7 +374,7 @@ if __name__ == '__main__':
 
         t2 = time()
         users_to_test = list(data_generator.test_set.keys())
-        ret = test(sess, placeholders, batch_ratings, users_to_test, drop_flag=True)
+        ret = test(sess, [users, pos_items, neg_items, node_dropout, mess_dropout], batch_ratings, users_to_test, drop_flag=True)
 
         t3 = time()
 
