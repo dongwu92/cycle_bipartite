@@ -46,6 +46,10 @@ def parse_args():
 
     parser.add_argument('--gpu_ids', type=str, default='0',
                         help='0 for NAIS_prod, 1 for NAIS_concat')
+    parser.add_argument('--n_layers_generator', type=int, default=1,
+                        help='number of layers for generator')
+    parser.add_argument('--n_layers_discriminator', type=int, default=1,
+                        help='number of layers for discriminator')
 
     parser.add_argument('--node_dropout_flag', type=int, default=0,
                         help='0: Disable node dropout, 1: Activate node dropout')

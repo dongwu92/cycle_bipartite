@@ -87,9 +87,9 @@ class Data(object):
         np_path = '../train_temp/' + self.dataset + '/'
         if not os.path.exists(np_path):
             os.mkdir(np_path)
-        np_name = 'temp_' + str(self.num_epochs) + '_' + str(self.batch_size) +  '/epoch_' + str(epoch) + '.npy'
-        if not os.path.exists(np_path + 'temp_' + str(self.num_epochs) + '_' + str(self.batch_size)):
-            os.mkdir(np_path + 'temp_' + str(self.num_epochs) + '_' + str(self.batch_size))
+        np_name = 'temp_' + str(self.batch_size) + '/epoch_' + str(epoch) + '.npy'
+        if not os.path.exists(np_path + 'temp_' + str(self.batch_size)):
+            os.mkdir(np_path + 'temp_' + str(self.batch_size))
         if not os.path.exists(np_path + np_name):
             print("generate train temp @ epoch", epoch, np_path + np_name)
             dataset = []
@@ -116,6 +116,50 @@ class Data(object):
             sp.save_npz(self.path + '/s_norm_adj_mat.npz', norm_adj_mat)
             sp.save_npz(self.path + '/s_mean_adj_mat.npz', mean_adj_mat)
         return adj_mat, norm_adj_mat, mean_adj_mat
+
+    def get_split_adj_mat(self):
+        try:
+            adj_user_mat = sp.load_npz(self.path + '/s_adj_user_mat.npz')
+            adj_item_mat = sp.load_npz(self.path + '/s_adj_item_mat.npz')
+            # adj_uu_mat = sp.load_npz(self.path + '/s_adj_uu_mat.npz')
+            # adj_ii_mat = sp.load_npz(self.path + '/s_adj_ii_mat.npz')
+        except Exception:
+            adj_user_mat, adj_item_mat = self.create_split_adj_mat()
+            # adj_user_mat, adj_item_mat, adj_uu_mat, adj_ii_mat = self.create_split_adj_mat()
+            sp.save_npz(self.path + '/s_adj_user_mat.npz', adj_user_mat)
+            sp.save_npz(self.path + '/s_adj_item_mat.npz', adj_item_mat)
+            # sp.save_npz(self.path + '/s_adj_uu_mat.npz', adj_uu_mat)
+            # sp.save_npz(self.path + '/s_adj_ii_mat.npz', adj_ii_mat)
+        return adj_user_mat, adj_item_mat #, adj_uu_mat, adj_ii_mat
+
+    def create_split_adj_mat(self):
+        adj_user_mat = sp.dok_matrix((self.n_users, self.n_items), dtype=np.float32)
+        adj_item_mat = sp.dok_matrix((self.n_items, self.n_users), dtype=np.float32)
+        adj_user_mat = adj_user_mat.tolil()
+        adj_item_mat = adj_item_mat.tolil()
+        R = self.R.tolil()
+        adj_user_mat = R
+        adj_item_mat = R.T
+        adj_user_mat = adj_user_mat.todok()
+        adj_item_mat = adj_item_mat.todok()
+
+        def normalized_adj_single(adj):
+            rowsum = np.array(adj.sum(1))
+
+            d_inv = np.power(rowsum, -1).flatten()
+            d_inv[np.isinf(d_inv)] = 0.
+            d_mat_inv = sp.diags(d_inv)
+
+            norm_adj = d_mat_inv.dot(adj)
+            # norm_adj = adj.dot(d_mat_inv)
+            print('generate single-normalized adjacency matrix.')
+            return norm_adj.tocoo()
+
+        adj_user_mat = normalized_adj_single(adj_user_mat)
+        adj_item_mat = normalized_adj_single(adj_item_mat)
+        # adj_uu_mat = adj_user_mat.dot(adj_item_mat)
+        # adj_ii_mat = adj_item_mat.dot(adj_user_mat)
+        return adj_user_mat.tocsr(), adj_item_mat.tocsr()#, adj_uu_mat.tocsr(), adj_ii_mat.tocsr()
 
     def create_adj_mat(self):
         t1 = time()

@@ -35,6 +35,29 @@ def _init_weights(pretrain_data, n_users, n_items, n_layers):
                     initializer([weight_size_list[k], weight_size_list[k + 1]]), name='W_bi_%d' % k)
             all_weights['b_bi_%d' % k] = tf.Variable(
                     initializer([1, weight_size_list[k + 1]]), name='b_bi_%d' % k)
+    elif args.alg_type == 'lab':
+        for k in range(n_layers):
+            all_weights['W_gc_%d' % k] = tf.Variable(
+                    initializer([weight_size_list[k], weight_size_list[k + 1]]), name='W_gc_%d' % k)
+            all_weights['b_gc_%d' % k] = tf.Variable(
+                    initializer([1, weight_size_list[k + 1]]), name='b_gc_%d' % k)
+
+            # all_weights['W_bi_%d' % k] = tf.Variable(
+            #         initializer([weight_size_list[k], weight_size_list[k + 1]]), name='W_bi_%d' % k)
+            # all_weights['b_bi_%d' % k] = tf.Variable(
+            #         initializer([1, weight_size_list[k + 1]]), name='b_bi_%d' % k)
+        for k in range(n_layers + 1):
+            all_weights['alpha_%d' %k] = tf.Variable(
+                    initializer([args.embed_size]), name='alpha_%d' % k)
+    elif args.alg_type == 'bgcf':
+        all_weights["W_u"] = tf.Variable(initializer([args.embed_size, args.embed_size]), name="W_u")
+        all_weights["W_v"] = tf.Variable(initializer([args.embed_size, args.embed_size]), name="W_v")
+        all_weights["W_uu"] = tf.Variable(initializer([args.embed_size, args.embed_size]), name="W_uu")
+        all_weights["W_vv"] = tf.Variable(initializer([args.embed_size, args.embed_size]), name="W_vv")
+    elif args.alg_type == 'lgcn':
+        for k in range(n_layers + 1):
+            all_weights['alpha_%d' %k] = tf.Variable(
+                    initializer([args.embed_size]), name='alpha_%d' % k)
 
     return all_weights
 
@@ -93,11 +116,9 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
         A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
 
     ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
-
     all_embeddings = [ego_embeddings]
 
     for k in range(0, n_layers):
-
         temp_embed = []
         for f in range(n_fold):
             temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
@@ -116,17 +137,487 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
 
         # non-linear activation.
         ego_embeddings = sum_embeddings + bi_embeddings
-
         # message dropout.
         ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
 
         # normalize the distribution of embeddings.
         norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
-
         all_embeddings += [norm_embeddings]
-
     all_embeddings = tf.concat(all_embeddings, 1)
     u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+    return u_g_embeddings, i_g_embeddings
+
+
+def _split_A_hat_bgcf(X, n_fold, n_nodes):
+    A_fold_hat = []
+
+    fold_len = n_nodes // n_fold
+    for i_fold in range(n_fold):
+        start = i_fold * fold_len
+        if i_fold == n_fold - 1:
+            end = n_nodes
+        else:
+            end = (i_fold + 1) * fold_len
+        A_fold_hat.append(_convert_sp_mat_to_sp_tensor(X[start:end]))
+    return A_fold_hat
+
+# # version 2
+# def _create_bgcf_embed(adj_user, adj_item, adj_uu, adj_ii, weights, mess_dropout, node_dropout, n_layers, n_fold, n_users, n_items):
+#     # Generate a set of adjacency sub-matrix.
+#     A_fold_hat_user = _split_A_hat_bgcf(adj_user, n_fold, n_users)  # p x q
+#     A_fold_hat_item = _split_A_hat_bgcf(adj_item, n_fold, n_items)  # q x p
+#     A_fold_hat_uu = _split_A_hat_bgcf(adj_uu, n_fold, n_users)  # q x p
+#     A_fold_hat_ii = _split_A_hat_bgcf(adj_ii, n_fold, n_items)  # q x p
+#
+#     # ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+#     all_embeddings = [tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)]  # p x d, q x d
+#     ego_user, ego_item = weights['user_embedding'], weights['item_embedding']
+#
+#     for k in range(0, n_layers):
+#         temp_embed_user, temp_embed_item, temp_embed_uu, temp_embed_ii = [], [], [], []
+#         for f in range(n_fold):
+#             temp_embed_user.append(tf.sparse_tensor_dense_matmul(A_fold_hat_user[f], ego_item))
+#             temp_embed_item.append(tf.sparse_tensor_dense_matmul(A_fold_hat_item[f], ego_user))
+#             temp_embed_uu.append(tf.sparse_tensor_dense_matmul(A_fold_hat_uu[f], ego_user))
+#             temp_embed_ii.append(tf.sparse_tensor_dense_matmul(A_fold_hat_ii[f], ego_item))
+#
+#         # sum messages of neighbors.
+#         side_user = tf.concat(temp_embed_user, 0)
+#         side_item = tf.concat(temp_embed_item, 0)
+#         side_uu = tf.concat(temp_embed_uu, 0)
+#         side_ii = tf.concat(temp_embed_ii, 0)
+#         # transformed sum messages of neighbors.
+#         ego_user = tf.matmul(side_user, weights['W_u']) + tf.matmul(side_uu, weights['W_uu'])
+#         ego_item = tf.matmul(side_item, weights['W_v']) + tf.matmul(side_ii, weights['W_vv'])
+#         # message dropout.
+#         ego_user = tf.nn.dropout(ego_user, 1 - mess_dropout[k])
+#         ego_item = tf.nn.dropout(ego_item, 1 - mess_dropout[k])
+#         # normalize the distribution of embeddings.
+#         norm_user = tf.math.l2_normalize(ego_user, axis=1)
+#         norm_item = tf.math.l2_normalize(ego_item, axis=1)
+#         all_embeddings += [tf.concat([norm_user, norm_item], axis=0)]
+#     all_embeddings = tf.concat(all_embeddings, 1)
+#     u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+#     return u_g_embeddings, i_g_embeddings
+
+
+# version 1.1
+def _create_bgcf_embed(adj_user, adj_item, adj_uu, adj_ii, weights, mess_dropout, node_dropout, n_layers, n_fold, n_users, n_items):
+    # Generate a set of adjacency sub-matrix.
+    A_fold_hat_user = _split_A_hat_bgcf(adj_user, n_fold, n_users)  # p x q
+    A_fold_hat_item = _split_A_hat_bgcf(adj_item, n_fold, n_items)  # q x p
+
+    # ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+    all_embeddings = [tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)]  # p x d, q x d
+    ego_user, ego_item = weights['user_embedding'], weights['item_embedding']
+
+    for k in range(0, n_layers):
+        temp_embed_user, temp_embed_item = [], []
+        for f in range(n_fold):
+            temp_embed_user.append(tf.sparse_tensor_dense_matmul(A_fold_hat_user[f], ego_item))
+            temp_embed_item.append(tf.sparse_tensor_dense_matmul(A_fold_hat_item[f], ego_user))
+
+        # sum messages of neighbors.
+        side_user = tf.concat(temp_embed_user, 0)
+        side_item = tf.concat(temp_embed_item, 0)
+        # transformed sum messages of neighbors.
+        ego_user = tf.matmul(side_user, weights['W_u'])
+        ego_item = tf.matmul(side_item, weights['W_v'])
+        # message dropout.
+        ego_user = tf.nn.dropout(ego_user, 1 - mess_dropout[k])
+        ego_item = tf.nn.dropout(ego_item, 1 - mess_dropout[k])
+        # normalize the distribution of embeddings.
+        norm_user = tf.math.l2_normalize(ego_user, axis=1)
+        norm_item = tf.math.l2_normalize(ego_item, axis=1)
+        all_embeddings += [tf.concat([norm_user, norm_item], axis=0)]
+    all_embeddings = tf.concat(all_embeddings, 1)
+    u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+    return u_g_embeddings, i_g_embeddings
+
+# version 1
+# def _create_bgcf_embed(adj_user, adj_item, adj_uu, adj_ii, weights, mess_dropout, node_dropout, n_layers, n_fold, n_users, n_items):
+#     # Generate a set of adjacency sub-matrix.
+#     A_fold_hat_user = _split_A_hat_bgcf(adj_user, n_fold, n_users)  # p x q
+#     A_fold_hat_item = _split_A_hat_bgcf(adj_item, n_fold, n_items)  # q x p
+#
+#     # ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+#     all_embeddings = [tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)]  # p x d, q x d
+#     ego_user, ego_item = weights['user_embedding'], weights['item_embedding']
+#
+#     for k in range(0, n_layers):
+#         temp_embed_user, temp_embed_item, temp_embed_uu, temp_embed_ii = [], [], [], []
+#         for f in range(n_fold):
+#             temp_embed_user.append(tf.sparse_tensor_dense_matmul(A_fold_hat_user[f], ego_item))
+#             temp_embed_item.append(tf.sparse_tensor_dense_matmul(A_fold_hat_item[f], ego_user))
+#
+#         # sum messages of neighbors.
+#         side_user = tf.concat(temp_embed_user, 0)
+#         side_item = tf.concat(temp_embed_item, 0)
+#         # transformed sum messages of neighbors.
+#         ego_user = tf.matmul(side_user, weights['W_u'])
+#         ego_item = tf.matmul(side_item, weights['W_v'])
+#         # message dropout.
+#         ego_user = tf.nn.dropout(ego_user, 1 - mess_dropout[k])
+#         ego_item = tf.nn.dropout(ego_item, 1 - mess_dropout[k])
+#         # normalize the distribution of embeddings.
+#         norm_user = tf.math.l2_normalize(ego_user, axis=1)
+#         norm_item = tf.math.l2_normalize(ego_item, axis=1)
+#         all_embeddings += [tf.concat([norm_user, norm_item], axis=0)]
+#     all_embeddings = tf.concat(all_embeddings, 1)
+#     u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+#     return u_g_embeddings, i_g_embeddings
+
+
+def _create_cgcf_embed(adj_user, adj_item, weights, mess_dropout, node_dropout, n_layers, n_fold, n_users, n_items):
+    # Generate a set of adjacency sub-matrix.
+    A_fold_hat_user = _split_A_hat_bgcf(adj_user, n_fold, n_users)  # p x q
+    A_fold_hat_item = _split_A_hat_bgcf(adj_item, n_fold, n_items)  # q x p
+
+    # ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+    all_embeddings = [tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)]  # p x d, q x d
+    ego_user, ego_item = weights['user_embedding'], weights['item_embedding']
+
+    for k in range(0, n_layers):
+        temp_embed_user, temp_embed_item, temp_embed_uu, temp_embed_ii = [], [], [], []
+        for f in range(n_fold):
+            temp_embed_user.append(tf.sparse_tensor_dense_matmul(A_fold_hat_user[f], ego_item))
+            temp_embed_item.append(tf.sparse_tensor_dense_matmul(A_fold_hat_item[f], ego_user))
+
+        # sum messages of neighbors.
+        side_user = tf.concat(temp_embed_user, 0)
+        side_item = tf.concat(temp_embed_item, 0)
+        # transformed sum messages of neighbors.
+        ego_user = tf.matmul(side_user, weights['W_u'])
+        ego_item = tf.matmul(side_item, weights['W_v'])
+        # message dropout.
+        ego_user = tf.nn.dropout(ego_user, 1 - mess_dropout[k])
+        ego_item = tf.nn.dropout(ego_item, 1 - mess_dropout[k])
+        # normalize the distribution of embeddings.
+        norm_user = tf.math.l2_normalize(ego_user, axis=1)
+        norm_item = tf.math.l2_normalize(ego_item, axis=1)
+        all_embeddings += [tf.concat([norm_user, norm_item], axis=0)]
+    all_embeddings = tf.concat(all_embeddings, 1)
+    u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+    return u_g_embeddings, i_g_embeddings
+
+# version 7: version 4 + attention TODO
+# def _create_lab_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, n_fold, n_users, n_items):
+#     # Generate a set of adjacency sub-matrix.
+#     if args.node_dropout_flag:
+#         # node dropout.
+#         A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+#     else:
+#         A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+#
+#     ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+#     all_embeddings = [ego_embeddings]
+#
+#     for k in range(0, n_layers):
+#         temp_embed = []
+#         for f in range(n_fold):
+#             temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+#
+#         # sum messages of neighbors.
+#         side_embeddings = tf.concat(temp_embed, 0)
+#         # transformed sum messages of neighbors.
+#         ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_0']) # + weights['b_gc_%d' % k]
+#         # message dropout.
+#         # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+#         ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+#
+#         # normalize the distribution of embeddings.
+#         norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+#         all_embeddings += [norm_embeddings]
+#     all_embeddings = tf.concat(all_embeddings, 1)
+#     u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+#     return u_g_embeddings, i_g_embeddings
+
+def _split_A_hat_user_item(X, n_fold, n_users, n_items):
+    A_fold_hat_user, A_fold_hat_item = [], []
+    fold_len_user = n_users // n_fold
+    fold_len_item = n_items // n_fold
+
+    for i_fold in range(n_fold):
+        start = i_fold * fold_len_user
+        if i_fold == n_fold - 1:
+            end = n_users
+        else:
+            end = (i_fold + 1) * fold_len_user
+        A_fold_hat_user.append(_convert_sp_mat_to_sp_tensor(X[start:end]))
+
+    for i_fold in range(n_fold):
+        start = i_fold * fold_len_item + n_users
+        if i_fold == n_fold - 1:
+            end = n_users + n_items
+        else:
+            end = (i_fold + 1) * fold_len_item + n_users
+        A_fold_hat_item.append(_convert_sp_mat_to_sp_tensor(X[start:end]))
+    return A_fold_hat_user, A_fold_hat_item
+
+# version 6:201912202224
+def _create_lab_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, n_fold, n_users, n_items):
+    # Generate a set of adjacency sub-matrix.
+    A_fold_hat_user, A_fold_hat_item = _split_A_hat_user_item(norm_adj, n_fold, n_users, n_items)
+
+    ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+    all_embeddings = [ego_embeddings]
+
+    for k in range(0, n_layers):
+        temp_embed_user, temp_embed_item = [], []
+        for f in range(n_fold):
+            temp_embed_user.append(tf.sparse_tensor_dense_matmul(A_fold_hat_user[f], ego_embeddings))
+            temp_embed_item.append(tf.sparse_tensor_dense_matmul(A_fold_hat_item[f], ego_embeddings))
+
+        # sum messages of neighbors.
+        side_embeddings_user = tf.concat(temp_embed_user, 0)
+        side_embeddings_item = tf.concat(temp_embed_item, 0)
+        # transformed sum messages of neighbors.
+        ego_embeddings_user = tf.matmul(side_embeddings_user, weights['W_gc_0']) # + weights['b_gc_%d' % k]
+        ego_embeddings_item = tf.matmul(side_embeddings_item, weights['W_gc_1']) # + weights['b_gc_%d' % k]
+        ego_embeddings = tf.concat([ego_embeddings_user, ego_embeddings_item], axis=0)
+        # message dropout.
+        # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+        ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+
+        # normalize the distribution of embeddings.
+        norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+        all_embeddings += [norm_embeddings]
+    all_embeddings = tf.concat(all_embeddings, 1)
+    u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+    return u_g_embeddings, i_g_embeddings
+
+#version5: 201912190137
+# def _create_lab_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, n_fold, n_users, n_items):
+#     # Generate a set of adjacency sub-matrix.
+#     if args.node_dropout_flag:
+#         # node dropout.
+#         A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+#     else:
+#         A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+#
+#     ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+#     # all_embeddings = [ego_embeddings]
+#     final_embeddings = ego_embeddings * weights['alpha_0']
+#
+#     for k in range(0, n_layers):
+#         temp_embed = []
+#         for f in range(n_fold):
+#             temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+#
+#         # sum messages of neighbors.
+#         side_embeddings = tf.concat(temp_embed, 0)
+#         # transformed sum messages of neighbors.
+#         ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_0']) # + weights['b_gc_%d' % k]
+#         # message dropout.
+#         # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+#         ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+#
+#         # normalize the distribution of embeddings.
+#         norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+#         # all_embeddings += [norm_embeddings]
+#         final_embeddings += norm_embeddings * weights['alpha_%d' % (k + 1)]
+#     # all_embeddings = tf.concat(all_embeddings, 1)
+#     u_g_embeddings, i_g_embeddings = tf.split(final_embeddings, [n_users, n_items], 0)
+#     return u_g_embeddings, i_g_embeddings
+
+# version 4.1: 201912221706
+# def _create_lab_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, n_fold, n_users, n_items):
+#     # Generate a set of adjacency sub-matrix.
+#     if args.node_dropout_flag:
+#         # node dropout.
+#         A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+#     else:
+#         A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+#
+#     ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+#     all_embeddings = [ego_embeddings]
+#
+#     for k in range(0, n_layers):
+#         temp_embed = []
+#         for f in range(n_fold):
+#             temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+#
+#         # sum messages of neighbors.
+#         side_embeddings = tf.concat(temp_embed, 0)
+#         # transformed sum messages of neighbors.
+#         ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_0']) # + weights['b_gc_%d' % k]
+#         # message dropout.
+#         # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+#         # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+#
+#         # normalize the distribution of embeddings.
+#         # norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+#         all_embeddings += [ego_embeddings]
+#     all_embeddings = tf.concat(all_embeddings, 1)
+#     u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+#     return u_g_embeddings, i_g_embeddings
+
+# version4: 201912182334
+# gcmc without dropout:
+#       Best Iter=[34]@[6563.6]	recall=[0.16021	0.22476	0.27399	0.31340	0.34547],
+#       precision=[0.04901	0.03486	0.02850	0.02456	0.02178], hit=[0.54582	0.64880	0.71117	0.75424	0.78334],
+#       ndcg=[0.22927	0.26799	0.29393	0.31365	0.32898]
+# def _create_lab_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, n_fold, n_users, n_items):
+#     # Generate a set of adjacency sub-matrix.
+#     if args.node_dropout_flag:
+#         # node dropout.
+#         A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+#     else:
+#         A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+#
+#     ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+#     all_embeddings = [ego_embeddings]
+#
+#     for k in range(0, n_layers):
+#         temp_embed = []
+#         for f in range(n_fold):
+#             temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+#
+#         # sum messages of neighbors.
+#         side_embeddings = tf.concat(temp_embed, 0)
+#         # transformed sum messages of neighbors.
+#         ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_0']) # + weights['b_gc_%d' % k]
+#         # message dropout.
+#         # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+#
+#         # normalize the distribution of embeddings.
+#         norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+#         all_embeddings += [norm_embeddings]
+#     all_embeddings = tf.concat(all_embeddings, 1)
+#     u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+#     return u_g_embeddings, i_g_embeddings
+
+# version3: 201912182329
+# def _create_lab_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, n_fold, n_users, n_items):
+#     # Generate a set of adjacency sub-matrix.
+#     if args.node_dropout_flag:
+#         # node dropout.
+#         A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+#     else:
+#         A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+#
+#     ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+#     all_embeddings = [ego_embeddings]
+#
+#     for k in range(0, n_layers):
+#         temp_embed = []
+#         for f in range(n_fold):
+#             temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+#
+#         # sum messages of neighbors.
+#         side_embeddings = tf.concat(temp_embed, 0)
+#         # transformed sum messages of neighbors.
+#         ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % k]) + weights['b_gc_%d' % k]
+#         # message dropout.
+#         ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+#
+#         # normalize the distribution of embeddings.
+#         norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+#         all_embeddings += [norm_embeddings]
+#     all_embeddings = tf.concat(all_embeddings, 1)
+#     u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+#     return u_g_embeddings, i_g_embeddings
+
+# version2: 201912182204
+# def _create_lab_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, n_fold, n_users, n_items):
+#     # Generate a set of adjacency sub-matrix.
+#     if args.node_dropout_flag:
+#         # node dropout.
+#         A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+#     else:
+#         A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+#
+#     ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+#     all_embeddings = [ego_embeddings]
+#
+#     for k in range(0, n_layers):
+#         temp_embed = []
+#         for f in range(n_fold):
+#             temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+#
+#         # sum messages of neighbors.
+#         side_embeddings = tf.concat(temp_embed, 0)
+#         # transformed sum messages of neighbors.
+#         #sum_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % k]) + weights['b_gc_%d' % k]
+#
+#         # bi messages of neighbors.
+#         bi_embeddings = tf.multiply(ego_embeddings, side_embeddings)
+#         # transformed bi messages of neighbors.
+#         bi_embeddings = tf.matmul(bi_embeddings, weights['W_bi_%d' % k]) + weights['b_bi_%d' % k]
+#
+#         # non-linear activation.
+#         # ego_embeddings = sum_embeddings + bi_embeddings
+#         ego_embeddings = bi_embeddings
+#         # message dropout.
+#         ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+#
+#         # normalize the distribution of embeddings.
+#         norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+#         all_embeddings += [norm_embeddings]
+#     all_embeddings = tf.concat(all_embeddings, 1)
+#     u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+#     return u_g_embeddings, i_g_embeddings
+
+# version 1: 201912182124
+# def _create_lab_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, n_fold, n_users, n_items):
+#     # Generate a set of adjacency sub-matrix.
+#     if args.node_dropout_flag:
+#         # node dropout.
+#         A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+#     else:
+#         A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+#
+#     ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+#     all_embeddings = [ego_embeddings]
+#
+#     for k in range(0, n_layers):
+#         temp_embed = []
+#         for f in range(n_fold):
+#             temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+#
+#         # sum messages of neighbors.
+#         side_embeddings = tf.concat(temp_embed, 0)
+#         # transformed sum messages of neighbors.
+#         sum_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % k]) + weights['b_gc_%d' % k]
+#
+#         # bi messages of neighbors.
+#         bi_embeddings = tf.multiply(ego_embeddings, side_embeddings)
+#         # transformed bi messages of neighbors.
+#         bi_embeddings = tf.matmul(bi_embeddings, weights['W_bi_%d' % k]) + weights['b_bi_%d' % k]
+#
+#         # non-linear activation.
+#         ego_embeddings = sum_embeddings + bi_embeddings
+#         # message dropout.
+#         ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+#
+#         # normalize the distribution of embeddings.
+#         norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+#         all_embeddings += [norm_embeddings]
+#     all_embeddings = tf.concat(all_embeddings, 1)
+#     u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+#     return u_g_embeddings, i_g_embeddings
+
+def _create_lgcn_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, n_fold, n_users, n_items):
+    if args.node_dropout_flag:
+        # node dropout.
+        A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+    else:
+        A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+
+    embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+    # all_embeddings = [embeddings]
+    final_embeddings = tf.multiply(embeddings, weights['alpha_0'])
+    for k in range(n_layers):
+        temp_embed = []
+        for f in range(n_fold):
+            temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], embeddings))
+
+        embeddings = tf.concat(temp_embed, 0)
+        # embeddings = tf.nn.leaky_relu(tf.matmul(embeddings, self.weights['W_gc_%d' %k]) + self.weights['b_gc_%d' %k])
+        embeddings = tf.nn.dropout(embeddings, 1 - mess_dropout[k])
+        final_embeddings += tf.multiply(embeddings, weights['alpha_%d' % (k + 1)])
+    # all_embeddings = tf.concat(all_embeddings, 1)
+    u_g_embeddings, i_g_embeddings = tf.split(final_embeddings, [n_users, n_items], 0)
     return u_g_embeddings, i_g_embeddings
 
 def _create_bpr_loss(users, pos_items, neg_items, decay):
@@ -157,7 +648,7 @@ def build_model(data_config, pretrain_data):
     n_items = data_config['n_items']
     n_fold = 100
     norm_adj = data_config['norm_adj']
-    n_nonzero_elems = norm_adj.count_nonzero()
+    # n_nonzero_elems = norm_adj.count_nonzero()
     n_layers = len(eval(args.layer_size))
     regs = eval(args.regs)
     decay = regs[0]
@@ -173,6 +664,17 @@ def build_model(data_config, pretrain_data):
 
     if args.alg_type in ['ngcf']:
         ua_embeddings, ia_embeddings = _create_ngcf_embed(norm_adj, weights, mess_dropout,
+                                                          node_dropout, n_layers, n_fold, n_users, n_items)
+    elif args.alg_type in ['lab']:
+        ua_embeddings, ia_embeddings = _create_lab_embed(norm_adj, weights, mess_dropout,
+                                                          node_dropout, n_layers, n_fold, n_users, n_items)
+    elif args.alg_type in ['bgcf']:
+        ua_embeddings, ia_embeddings = _create_bgcf_embed(data_config['adj_user'], data_config['adj_item'],
+                                                          data_config['adj_uu'], data_config['adj_ii'],
+                                                          weights, mess_dropout,
+                                                          node_dropout, n_layers, n_fold, n_users, n_items)
+    elif args.alg_type in ['lgcn']:
+        ua_embeddings, ia_embeddings = _create_lgcn_embed(norm_adj, weights, mess_dropout,
                                                           node_dropout, n_layers, n_fold, n_users, n_items)
     else:
         raise NotImplementedError("alg_type %s not supported!" % args.alg_type)
@@ -214,6 +716,13 @@ if __name__ == '__main__':
     elif args.adj_type == 'gcmc':
         config['norm_adj'] = mean_adj
         print('use the gcmc adjacency matrix')
+    elif args.adj_type == 'bgcf':
+        adj_user, adj_item, adj_uu, adj_ii = data_generator.get_split_adj_mat()
+        config['adj_user'] = adj_user
+        config['adj_item'] = adj_item
+        config['adj_uu'] = adj_uu
+        config['adj_ii'] = adj_ii
+        config['norm_adj'] = None
     else:
         config['norm_adj'] = mean_adj + sp.eye(mean_adj.shape[0])
         print('use the mean adjacency matrix')
@@ -313,6 +822,7 @@ if __name__ == '__main__':
             print('ERROR: loss is nan.')
             sys.exit()
 
+        tw0 = time()
         # print the test evaluation metrics each 10 epochs; pos:neg = 1:10.
         if (epoch + 1) % 10 != 0:
             if args.verbose > 0 and epoch % args.verbose == 0:
@@ -323,22 +833,29 @@ if __name__ == '__main__':
 
         t2 = time()
         users_to_test = list(data_generator.test_set.keys())
-        ret = test(sess, placeholders, batch_ratings, users_to_test, drop_flag=True)
+        tw1 = time()
+        if args.dataset == 'amazon-book':
+            ret = test(sess, placeholders, batch_ratings, users_to_test, drop_flag=True, batch_test_flag=True)
+        else:
+            ret = test(sess, placeholders, batch_ratings, users_to_test, drop_flag=True)
 
         t3 = time()
+        print("test::", t3 - tw1, tw1 - t2, t2 - tw0)
 
         loss_loger.append(loss)
         rec_loger.append(ret['recall'])
-        pre_loger.append(ret['precision'])
+        # pre_loger.append(ret['precision'])
         ndcg_loger.append(ret['ndcg'])
-        hit_loger.append(ret['hit_ratio'])
+        # hit_loger.append(ret['hit_ratio'])
 
         if args.verbose > 0:
-            perf_str = 'Epoch %d [%.1fs + %.1fs]: train==[%.5f=%.5f + %.5f + %.5f], recall=[%.5f, %.5f], ' \
-                       'precision=[%.5f, %.5f], hit=[%.5f, %.5f], ndcg=[%.5f, %.5f]' % \
-                       (epoch, t2 - t1, t3 - t2, loss, mf_loss, emb_loss, reg_loss, ret['recall'][0], ret['recall'][-1],
-                        ret['precision'][0], ret['precision'][-1], ret['hit_ratio'][0], ret['hit_ratio'][-1],
-                        ret['ndcg'][0], ret['ndcg'][-1])
+            # perf_str = 'Epoch %d [%.1fs + %.1fs]: train==[%.5f=%.5f + %.5f + %.5f], recall=[%.5f, %.5f], ' \
+            #            'precision=[%.5f, %.5f], hit=[%.5f, %.5f], ndcg=[%.5f, %.5f]' % \
+            #            (epoch, t2 - t1, t3 - t2, loss, mf_loss, emb_loss, reg_loss, ret['recall'][0], ret['recall'][-1],
+            #             ret['precision'][0], ret['precision'][-1], ret['hit_ratio'][0], ret['hit_ratio'][-1],
+            #             ret['ndcg'][0], ret['ndcg'][-1])
+            perf_str = 'Epoch %d [%.1fs + %.1fs]: train==[%.5f=%.5f + %.5f + %.5f], recall=%.5f, ndcg=%.5f' % \
+                       (epoch, t2 - t1, t3 - t2, loss, mf_loss, emb_loss, reg_loss, ret['recall'][0], ret['ndcg'][0])
             print(perf_str)
 
         cur_best_pre_0, stopping_step, should_stop = early_stopping(ret['recall'][0], cur_best_pre_0,
@@ -351,9 +868,9 @@ if __name__ == '__main__':
 
         # *********************************************************
         # save the user & item embeddings for pretraining.
-        if ret['recall'][0] == cur_best_pre_0 and args.save_flag == 1:
-            save_saver.save(sess, weights_save_path + '/weights', global_step=epoch)
-            print('save the weights in path: ', weights_save_path)
+        # if ret['recall'][0] == cur_best_pre_0 and args.save_flag == 1:
+        #     save_saver.save(sess, weights_save_path + '/weights', global_step=epoch)
+        #     print('save the weights in path: ', weights_save_path)
 
     recs = np.array(rec_loger)
     pres = np.array(pre_loger)
@@ -363,10 +880,15 @@ if __name__ == '__main__':
     best_rec_0 = max(recs[:, 0])
     idx = list(recs[:, 0]).index(best_rec_0)
 
-    final_perf = "Best Iter=[%d]@[%.1f]\trecall=[%s], precision=[%s], hit=[%s], ndcg=[%s]" % \
+    # final_perf = "Best Iter=[%d]@[%.1f]\trecall=[%s], precision=[%s], hit=[%s], ndcg=[%s]" % \
+    #              (idx, time() - t0, '\t'.join(['%.5f' % r for r in recs[idx]]),
+    #               '\t'.join(['%.5f' % r for r in pres[idx]]),
+    #               '\t'.join(['%.5f' % r for r in hit[idx]]),
+    #               '\t'.join(['%.5f' % r for r in ndcgs[idx]]))
+    final_perf = "Best Iter=[%d]@[%.1f]\trecall=[%s], ndcg=[%s]" % \
                  (idx, time() - t0, '\t'.join(['%.5f' % r for r in recs[idx]]),
-                  '\t'.join(['%.5f' % r for r in pres[idx]]),
-                  '\t'.join(['%.5f' % r for r in hit[idx]]),
+                  # '\t'.join(['%.5f' % r for r in pres[idx]]),
+                  # '\t'.join(['%.5f' % r for r in hit[idx]]),
                   '\t'.join(['%.5f' % r for r in ndcgs[idx]]))
     print(final_perf)
 

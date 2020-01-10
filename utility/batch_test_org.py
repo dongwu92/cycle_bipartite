@@ -12,6 +12,7 @@ import multiprocessing
 import heapq
 
 cores = multiprocessing.cpu_count() // 2
+
 args = parse_args()
 Ks = eval(args.Ks)
 
@@ -73,12 +74,10 @@ def get_performance(user_pos_test, r, auc, Ks):
     precision, recall, ndcg, hit_ratio = [], [], [], []
 
     for K in Ks:
-        # precision.append(metrics.precision_at_k(r, K))
-        precision.append(0)
+        precision.append(metrics.precision_at_k(r, K))
         recall.append(metrics.recall_at_k(r, K, len(user_pos_test)))
         ndcg.append(metrics.ndcg_at_k(r, K))
-        # hit_ratio.append(metrics.hit_at_k(r, K))
-        hit_ratio.append(0)
+        hit_ratio.append(metrics.hit_at_k(r, K))
 
     return {'recall': np.array(recall), 'precision': np.array(precision),
             'ndcg': np.array(ndcg), 'hit_ratio': np.array(hit_ratio), 'auc': auc}
@@ -109,17 +108,13 @@ def test_one_user(x):
     return get_performance(user_pos_test, r, auc, Ks)
 
 
-def test(sess, placehodlers, batch_ratings, users_to_test, drop_flag=False, batch_test_flag=False):
-    users, pos_items, neg_items, node_dropout, mess_dropout = placehodlers
+def test(sess, model, users_to_test, drop_flag=False, batch_test_flag=False):
     result = {'precision': np.zeros(len(Ks)), 'recall': np.zeros(len(Ks)), 'ndcg': np.zeros(len(Ks)),
               'hit_ratio': np.zeros(len(Ks)), 'auc': 0.}
 
     pool = multiprocessing.Pool(cores)
 
-    if batch_test_flag:
-        u_batch_size = BATCH_SIZE // 4
-    else:
-        u_batch_size = BATCH_SIZE // 4
+    u_batch_size = BATCH_SIZE * 2
     i_batch_size = BATCH_SIZE
 
     test_users = users_to_test
@@ -143,16 +138,17 @@ def test(sess, placehodlers, batch_ratings, users_to_test, drop_flag=False, batc
             for i_batch_id in range(n_item_batchs):
                 i_start = i_batch_id * i_batch_size
                 i_end = min((i_batch_id + 1) * i_batch_size, ITEM_NUM)
+
                 item_batch = range(i_start, i_end)
 
                 if drop_flag == False:
-                    i_rate_batch = sess.run(batch_ratings, {users: user_batch,
-                                                                pos_items: item_batch})
+                    i_rate_batch = sess.run(model.batch_ratings, {model.users: user_batch,
+                                                                model.pos_items: item_batch})
                 else:
-                    i_rate_batch = sess.run(batch_ratings, {users: user_batch,
-                                                                pos_items: item_batch,
-                                                                node_dropout: [0.]*len(eval(args.layer_size)),
-                                                                mess_dropout: [0.]*len(eval(args.layer_size))})
+                    i_rate_batch = sess.run(model.batch_ratings, {model.users: user_batch,
+                                                                model.pos_items: item_batch,
+                                                                model.node_dropout: [0.]*len(eval(args.layer_size)),
+                                                                model.mess_dropout: [0.]*len(eval(args.layer_size))})
                 rate_batch[:, i_start: i_end] = i_rate_batch
                 i_count += i_rate_batch.shape[1]
 
@@ -160,14 +156,16 @@ def test(sess, placehodlers, batch_ratings, users_to_test, drop_flag=False, batc
 
         else:
             item_batch = range(ITEM_NUM)
+
             if drop_flag == False:
-                rate_batch = sess.run(batch_ratings, {users: user_batch,
-                                                              pos_items: item_batch})
+                rate_batch = sess.run(model.batch_ratings, {model.users: user_batch,
+                                                              model.pos_items: item_batch})
             else:
-                rate_batch = sess.run(batch_ratings, {users: user_batch,
-                                                              pos_items: item_batch,
-                                                              node_dropout: [0.] * len(eval(args.layer_size)),
-                                                              mess_dropout: [0.] * len(eval(args.layer_size))})
+                rate_batch = sess.run(model.batch_ratings, {model.users: user_batch,
+                                                              model.pos_items: item_batch,
+                                                              model.node_dropout: [0.] * len(eval(args.layer_size)),
+                                                              model.mess_dropout: [0.] * len(eval(args.layer_size))})
+
         user_batch_rating_uid = zip(rate_batch, user_batch)
         batch_result = pool.map(test_one_user, user_batch_rating_uid)
         count += len(batch_result)
