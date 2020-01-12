@@ -44,6 +44,16 @@ def parse_args():
     parser.add_argument('--alg_type', nargs='?', default='ngcf',
                         help='Specify the type of the graph convolutional layer from {ngcf, gcn, gcmc}.')
 
+    # args for appnp
+    parser.add_argument('--appnp_f_units', nargs='?', default='[64]',
+                        help='Hidden units for appnp')
+    parser.add_argument('--appnp_c_units', type=int, default=16,
+                        help='dimensions of graph embeddings for appnp')
+    parser.add_argument('--appnp_alpha', type=float, default=0.1,
+                        help='alpha for appnp')
+    parser.add_argument('--appnp_niter', type=int, default=10,
+                        help='number of iterations for appnp')
+
     parser.add_argument('--gpu_ids', type=str, default='0',
                         help='0 for NAIS_prod, 1 for NAIS_concat')
     parser.add_argument('--n_layers_generator', type=int, default=1,
