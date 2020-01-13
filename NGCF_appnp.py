@@ -226,20 +226,25 @@ if __name__ == '__main__':
     config = dict()
     config['n_users'] = data_generator.n_users
     config['n_items'] = data_generator.n_items
-    plain_adj, norm_adj, mean_adj = data_generator.get_adj_mat()
 
-    if args.adj_type == 'plain':
-        config['norm_adj'] = plain_adj
-        print('use the plain adjacency matrix')
-    elif args.adj_type == 'norm':
-        config['norm_adj'] = norm_adj
-        print('use the normalized adjacency matrix')
-    elif args.adj_type == 'gcmc':
+    if args.adj_type == 'appnp':
+        norm_adj = data_generator.get_appnp_mat()
         config['norm_adj'] = mean_adj
-        print('use the gcmc adjacency matrix')
+        print('use the appnp normed adjacency matrix')
     else:
-        config['norm_adj'] = mean_adj + sp.eye(mean_adj.shape[0])
-        print('use the mean adjacency matrix')
+        plain_adj, norm_adj, mean_adj = data_generator.get_adj_mat()
+        if args.adj_type == 'plain':
+            config['norm_adj'] = plain_adj
+            print('use the plain adjacency matrix')
+        elif args.adj_type == 'norm':
+            config['norm_adj'] = norm_adj
+            print('use the normalized adjacency matrix')
+        elif args.adj_type == 'gcmc':
+            config['norm_adj'] = mean_adj
+            print('use the gcmc adjacency matrix')
+        else:
+            config['norm_adj'] = mean_adj + sp.eye(mean_adj.shape[0])
+            print('use the mean adjacency matrix')
 
     if args.pretrain == -1:
         pretrain_data = load_pretrained_data()
