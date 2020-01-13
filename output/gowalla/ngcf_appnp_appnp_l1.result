@@ -1,0 +1,4 @@
+embed_size=64, lr=0.0010, layer_size=[64], node_dropout=[0.1], mess_dropout=[0.1], regs=[1e-5], adj_type=appnp
+	Best Iter=[30]@[3715.1]	recall=[0.08063	0.11124	0.13459	0.15298	0.16980], ndcg=[0.14934	0.17412	0.19057	0.20272	0.21317]
+embed_size=64, lr=0.0010, layer_size=[64], node_dropout=[0.1], mess_dropout=[0.1,0.1,0.1], regs=[1e-5], adj_type=appnp
+	Best Iter=[21]@[4183.9]	recall=[0.08586	0.11843	0.14274	0.16301	0.18060], ndcg=[0.15935	0.18512	0.20203	0.21517	0.22583]

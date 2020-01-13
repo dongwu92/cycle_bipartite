@@ -39,9 +39,9 @@ def _init_weights(pretrain_data, n_users, n_items, n_layers):
         funits = [args.embed_size] + eval(args.appnp_f_units) + [args.appnp_c_units]
         for k in range(len(funits) - 1):
             all_weights['W_fappnp_%d' % k] = tf.Variable(
-                    initializer([weight_size_list[k], weight_size_list[k + 1]]), name='W_fappnp_%d' % k)
+                    initializer([funits[k], funits[k + 1]]), name='W_fappnp_%d' % k)
             all_weights['b_fappnp_%d' % k] = tf.Variable(
-                    initializer([1, weight_size_list[k + 1]]), name='b_fappnp_%d' % k)
+                    initializer([1, funits[k + 1]]), name='b_fappnp_%d' % k)
 
     return all_weights
 
@@ -134,19 +134,24 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
 
 def _create_appnp_embed(norm_adj, weights, n_users, n_items, keep_prob=0.5):
     ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+    all_embeddings = [ego_embeddings]
+    local_logits = ego_embeddings
     num_funits = len(eval(args.appnp_f_units)) + 1
     for k in range(num_funits):
-        ego_embeddings = tf.nn.relu(tf.matmul(ego_embeddings, weights['W_fappnp_%d' % k]) + weights['b_fappnp_%d' % k])
-        ego_embeddings = tf.nn.dropout(ego_embeddings, keep_prob)  # ckpt: keep prob for appnp mixed_dropout
+        local_logits = tf.nn.relu(tf.matmul(local_logits, weights['W_fappnp_%d' % k]) + weights['b_fappnp_%d' % k])
+        local_logits = tf.nn.dropout(local_logits, keep_prob)  # ckpt: keep prob for appnp mixed_dropout
     coo = norm_adj.tocoo()
     coo_indices = np.mat([coo.row, coo.col]).transpose()
     A_hat_tf = tf.SparseTensor(coo_indices, np.array(coo.data, dtype=np.float32), coo.shape)
-    Zs_prop = ego_embeddings
+    all_embeddings.append(local_logits)
+    Zs_prop = local_logits
     for _ in range(args.appnp_niter):
         A_drop_val = tf.nn.dropout(A_hat_tf.values, keep_prob)
         A_drop = tf.SparseTensor(A_hat_tf.indices, A_drop_val, A_hat_tf.dense_shape)
         Zs_prop = tf.sparse_tensor_dense_matmul(A_drop, Zs_prop) + args.appnp_alpha * ego_embeddings
-    u_g_embeddings, i_g_embeddings = tf.split(Zs_prop, [n_users, n_items], 0)
+        all_embeddings.append(Zs_prop)
+    all_embeddings = tf.concat(all_embeddings, 1)
+    u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
     return u_g_embeddings, i_g_embeddings
 
 
@@ -229,7 +234,7 @@ if __name__ == '__main__':
 
     if args.adj_type == 'appnp':
         norm_adj = data_generator.get_appnp_mat()
-        config['norm_adj'] = mean_adj
+        config['norm_adj'] = norm_adj
         print('use the appnp normed adjacency matrix')
     else:
         plain_adj, norm_adj, mean_adj = data_generator.get_adj_mat()
@@ -246,6 +251,7 @@ if __name__ == '__main__':
             config['norm_adj'] = mean_adj + sp.eye(mean_adj.shape[0])
             print('use the mean adjacency matrix')
 
+    t0 = time()
     if args.pretrain == -1:
         pretrain_data = load_pretrained_data()
     else:
@@ -319,6 +325,7 @@ if __name__ == '__main__':
     should_stop = False
 
     for epoch in range(args.epoch):
+        t1 = time()
         loss, mf_loss, emb_loss, reg_loss = 0., 0., 0., 0.
         n_batch = data_generator.n_train // args.batch_size + 1
         train_dataset = data_generator.load_train_temp(epoch)
@@ -347,11 +354,13 @@ if __name__ == '__main__':
                 print(perf_str)
             continue
 
+        t2 = time()
         users_to_test = list(data_generator.test_set.keys())
         if args.dataset == 'amazon-book':
             ret = test(sess, placeholders, batch_ratings, users_to_test, drop_flag=True, batch_test_flag=True)
         else:
             ret = test(sess, placeholders, batch_ratings, users_to_test, drop_flag=True)
+        t3 = time()
 
         loss_loger.append(loss)
         rec_loger.append(ret['recall'])
