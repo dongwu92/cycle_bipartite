@@ -1,0 +1,269 @@
+n_users=29858, n_items=40981
+n_interactions=1027370
+n_train=810128, n_test=217242, sparsity=0.00084
+Namespace(Ks='[20, 40, 60, 80, 100]', adj_type='appnp', alg_type='appnp', appnp_alpha=0.1, appnp_c_units=64, appnp_f_units='[64]', appnp_niter=10, batch_size=16384, data_path='./Data/', dataset='gowalla', embed_size=64, epoch=400, gpu_ids='1', layer_size='[64]', lr=0.001, mess_dropout='[0.1,0.1,0.1]', model_type='ngcf', n_layers_discriminator=1, n_layers_generator=1, node_dropout='[0.1]', node_dropout_flag=0, pretrain=0, proj_path='', regs='[1e-5]', report=0, save_flag=1, test_flag='part', verbose=1, weights_path='../')
+already create adjacency matrix (70839, 70839) 134.25617456436157
+use the appnp normed adjacency matrix
+WARNING: Logging before flag parsing goes to stderr.
+W0113 16:19:36.716334 140209525167936 deprecation_wrapper.py:119] From NGCF_appnp.py:238: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.
+
+W0113 16:19:37.317912 140209525167936 lazy_loader.py:50]
+The TensorFlow contrib module will not be included in TensorFlow 2.0.
+For more information, please see:
+  * https://github.com/tensorflow/community/blob/master/rfcs/20180907-contrib-sunset.md
+  * https://github.com/tensorflow/addons
+  * https://github.com/tensorflow/io (for I/O related ops)
+If you depend on functionality not listed there, please file an issue.
+
+using xavier initialization
+W0113 16:19:37.504605 140209525167936 deprecation.py:506] From NGCF_appnp.py:196: calling dropout (from tensorflow.python.ops.nn_ops) with keep_prob is deprecated and will be removed in a future version.
+Instructions for updating:
+Please use `rate` instead of `keep_prob`. Rate should be set to `rate = 1 - keep_prob`.
+W0113 16:19:37.514959 140209525167936 deprecation_wrapper.py:119] From NGCF_appnp.py:198: The name tf.sparse_tensor_dense_matmul is deprecated. Please use tf.sparse.sparse_dense_matmul instead.
+
+W0113 16:19:37.940134 140209525167936 deprecation_wrapper.py:119] From NGCF_appnp.py:214: The name tf.log is deprecated. Please use tf.math.log instead.
+
+W0113 16:19:37.949325 140209525167936 deprecation_wrapper.py:119] From NGCF_appnp.py:310: The name tf.train.AdamOptimizer is deprecated. Please use tf.compat.v1.train.AdamOptimizer instead.
+
+W0113 16:19:38.002404 140209525167936 deprecation.py:323] From /home/wudong/anaconda3/envs/rec/lib/python3.6/site-packages/tensorflow/python/ops/math_grad.py:1250: add_dispatch_support.<locals>.wrapper (from tensorflow.python.ops.array_ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use tf.where in 2.0, which has the same broadcast rule as np.where
+W0113 16:19:38.504608 140209525167936 deprecation_wrapper.py:119] From NGCF_appnp.py:312: The name tf.train.Saver is deprecated. Please use tf.compat.v1.train.Saver instead.
+
+W0113 16:19:38.519995 140209525167936 deprecation_wrapper.py:119] From NGCF_appnp.py:313: The name tf.ConfigProto is deprecated. Please use tf.compat.v1.ConfigProto instead.
+
+W0113 16:19:38.520612 140209525167936 deprecation_wrapper.py:119] From NGCF_appnp.py:315: The name tf.Session is deprecated. Please use tf.compat.v1.Session instead.
+
+without pretraining.
+Epoch 0 [61.9s]: train==[27.25697=27.25636 + 0.00000]
+Epoch 1 [3.4s]: train==[14.17238=14.16927 + 0.00000]
+Epoch 2 [3.5s]: train==[10.70200=10.69834 + 0.00000]
+Epoch 3 [3.4s]: train==[8.57690=8.57282 + 0.00000]
+Epoch 4 [3.5s]: train==[7.26294=7.25849 + 0.00000]
+Epoch 5 [3.1s]: train==[6.30550=6.30073 + 0.00000]
+Epoch 6 [3.5s]: train==[5.59656=5.59151 + 0.00000]
+Epoch 7 [3.3s]: train==[5.09775=5.09245 + 0.00000]
+Epoch 8 [3.4s]: train==[4.62649=4.62096 + 0.00000]
+Epoch 9 [3.2s + 212.9s]: train==[4.38745=4.38174 + 0.00571 + 0.00000], recall=0.11091, ndcg=0.18789
+Epoch 10 [3.7s]: train==[4.16870=4.16281 + 0.00000]
+Epoch 11 [3.1s]: train==[3.95724=3.95123 + 0.00000]
+Epoch 12 [3.3s]: train==[3.78372=3.77758 + 0.00000]
+Epoch 13 [3.4s]: train==[3.59159=3.58534 + 0.00000]
+Epoch 14 [3.3s]: train==[3.48189=3.47552 + 0.00000]
+Epoch 15 [2.9s]: train==[3.35487=3.34840 + 0.00000]
+Epoch 16 [3.3s]: train==[3.21276=3.20620 + 0.00000]
+Epoch 17 [2.9s]: train==[3.14132=3.13469 + 0.00000]
+Epoch 18 [3.3s]: train==[3.07012=3.06343 + 0.00000]
+Epoch 19 [3.2s + 191.1s]: train==[2.97458=2.96784 + 0.00675 + 0.00000], recall=0.12285, ndcg=0.20291
+Epoch 20 [3.3s]: train==[2.87150=2.86468 + 0.00000]
+Epoch 21 [3.3s]: train==[2.81425=2.80734 + 0.00000]
+Epoch 22 [3.7s]: train==[2.72584=2.71887 + 0.00000]
+Epoch 23 [3.5s]: train==[2.63018=2.62313 + 0.00000]
+Epoch 24 [3.1s]: train==[2.58427=2.57719 + 0.00000]
+Epoch 25 [3.4s]: train==[2.49656=2.48941 + 0.00000]
+Epoch 26 [3.5s]: train==[2.44633=2.43913 + 0.00000]
+Epoch 27 [3.6s]: train==[2.37736=2.37009 + 0.00000]
+Epoch 28 [3.3s]: train==[2.33093=2.32360 + 0.00000]
+Epoch 29 [3.3s + 180.5s]: train==[2.26944=2.26207 + 0.00737 + 0.00000], recall=0.13144, ndcg=0.21136
+Epoch 30 [3.0s]: train==[2.21751=2.21008 + 0.00000]
+Epoch 31 [3.0s]: train==[2.16592=2.15842 + 0.00000]
+Epoch 32 [2.7s]: train==[2.18269=2.17516 + 0.00000]
+Epoch 33 [2.9s]: train==[2.11547=2.10791 + 0.00000]
+Epoch 34 [3.2s]: train==[2.04554=2.03791 + 0.00000]
+Epoch 35 [3.0s]: train==[2.01660=2.00894 + 0.00000]
+Epoch 36 [3.0s]: train==[1.97622=1.96851 + 0.00000]
+Epoch 37 [3.0s]: train==[1.95404=1.94629 + 0.00000]
+Epoch 38 [2.9s]: train==[1.91083=1.90305 + 0.00000]
+Epoch 39 [3.1s + 179.6s]: train==[1.86102=1.85319 + 0.00783 + 0.00000], recall=0.13761, ndcg=0.21758
+Epoch 40 [2.6s]: train==[1.86096=1.85308 + 0.00000]
+Epoch 41 [3.2s]: train==[1.81831=1.81040 + 0.00000]
+Epoch 42 [3.3s]: train==[1.77686=1.76891 + 0.00000]
+Epoch 43 [3.3s]: train==[1.74766=1.73968 + 0.00000]
+Epoch 44 [3.3s]: train==[1.72026=1.71223 + 0.00000]
+Epoch 45 [3.0s]: train==[1.70298=1.69491 + 0.00000]
+Epoch 46 [2.9s]: train==[1.65290=1.64479 + 0.00000]
+Epoch 47 [2.9s]: train==[1.61763=1.60949 + 0.00000]
+Epoch 48 [2.4s]: train==[1.62229=1.61411 + 0.00000]
+Epoch 49 [2.5s + 181.2s]: train==[1.63399=1.62578 + 0.00821 + 0.00000], recall=0.14186, ndcg=0.22184
+Epoch 50 [2.8s]: train==[1.56464=1.55642 + 0.00000]
+Epoch 51 [3.1s]: train==[1.54453=1.53625 + 0.00000]
+Epoch 52 [3.2s]: train==[1.50613=1.49780 + 0.00000]
+Epoch 53 [3.2s]: train==[1.51657=1.50822 + 0.00000]
+Epoch 54 [2.6s]: train==[1.47168=1.46330 + 0.00000]
+Epoch 55 [3.2s]: train==[1.46528=1.45684 + 0.00000]
+Epoch 56 [2.4s]: train==[1.44192=1.43347 + 0.00000]
+Epoch 57 [2.4s]: train==[1.40608=1.39760 + 0.00000]
+Epoch 58 [2.1s]: train==[1.42287=1.41435 + 0.00000]
+Epoch 59 [2.1s + 103.8s]: train==[1.35067=1.34212 + 0.00855 + 0.00000], recall=0.14563, ndcg=0.22562
+Epoch 60 [2.3s]: train==[1.35858=1.34999 + 0.00000]
+Epoch 61 [2.5s]: train==[1.33563=1.32700 + 0.00000]
+Epoch 62 [2.5s]: train==[1.33511=1.32646 + 0.00000]
+Epoch 63 [2.3s]: train==[1.32777=1.31912 + 0.00000]
+Epoch 64 [2.2s]: train==[1.28812=1.27942 + 0.00000]
+Epoch 65 [2.1s]: train==[1.25906=1.25032 + 0.00000]
+Epoch 66 [2.1s]: train==[1.24662=1.23785 + 0.00000]
+Epoch 67 [2.1s]: train==[1.25755=1.24875 + 0.00000]
+Epoch 68 [2.1s]: train==[1.20963=1.20080 + 0.00000]
+Epoch 69 [2.1s + 110.5s]: train==[1.23297=1.22410 + 0.00887 + 0.00000], recall=0.14818, ndcg=0.22819
+Epoch 70 [2.1s]: train==[1.20313=1.19424 + 0.00000]
+Epoch 71 [2.2s]: train==[1.17731=1.16843 + 0.00000]
+Epoch 72 [2.3s]: train==[1.19184=1.18290 + 0.00000]
+Epoch 73 [2.2s]: train==[1.17356=1.16459 + 0.00000]
+Epoch 74 [2.2s]: train==[1.13331=1.12431 + 0.00000]
+Epoch 75 [2.0s]: train==[1.11274=1.10372 + 0.00000]
+Epoch 76 [2.1s]: train==[1.14124=1.13218 + 0.00000]
+Epoch 77 [2.1s]: train==[1.11035=1.10129 + 0.00000]
+Epoch 78 [2.1s]: train==[1.10680=1.09771 + 0.00000]
+Epoch 79 [2.1s + 111.9s]: train==[1.09267=1.08356 + 0.00912 + 0.00000], recall=0.14992, ndcg=0.23040
+Epoch 80 [2.1s]: train==[1.07636=1.06722 + 0.00000]
+Epoch 81 [2.2s]: train==[1.05408=1.04491 + 0.00000]
+Epoch 82 [2.2s]: train==[1.05064=1.04145 + 0.00000]
+Epoch 83 [2.2s]: train==[1.00412=0.99488 + 0.00000]
+Epoch 84 [2.3s]: train==[1.01758=1.00830 + 0.00000]
+Epoch 85 [2.3s]: train==[1.01289=1.00361 + 0.00000]
+Epoch 86 [2.2s]: train==[1.01445=1.00512 + 0.00000]
+Epoch 87 [2.3s]: train==[0.98382=0.97447 + 0.00000]
+Epoch 88 [2.6s]: train==[0.98248=0.97311 + 0.00000]
+Epoch 89 [2.6s + 124.0s]: train==[0.96419=0.95479 + 0.00941 + 0.00000], recall=0.15142, ndcg=0.23120
+Epoch 90 [2.9s]: train==[0.96919=0.95975 + 0.00000]
+Epoch 91 [2.7s]: train==[0.94549=0.93603 + 0.00000]
+Epoch 92 [2.7s]: train==[0.95179=0.94232 + 0.00000]
+Epoch 93 [2.8s]: train==[0.95168=0.94218 + 0.00000]
+Epoch 94 [2.7s]: train==[0.92968=0.92016 + 0.00000]
+Epoch 95 [2.6s]: train==[0.91081=0.90129 + 0.00000]
+Epoch 96 [2.6s]: train==[0.90319=0.89363 + 0.00000]
+Epoch 97 [2.7s]: train==[0.92229=0.91271 + 0.00000]
+Epoch 98 [2.9s]: train==[0.89431=0.88471 + 0.00000]
+Epoch 99 [2.9s + 117.4s]: train==[0.86289=0.85327 + 0.00962 + 0.00000], recall=0.15300, ndcg=0.23275
+Epoch 100 [2.8s]: train==[0.86550=0.85585 + 0.00000]
+Epoch 101 [2.8s]: train==[0.86421=0.85451 + 0.00000]
+Epoch 102 [2.6s]: train==[0.87506=0.86536 + 0.00000]
+Epoch 103 [2.6s]: train==[0.85029=0.84058 + 0.00000]
+Epoch 104 [2.6s]: train==[0.83647=0.82672 + 0.00000]
+Epoch 105 [2.7s]: train==[0.82857=0.81879 + 0.00000]
+Epoch 106 [2.6s]: train==[0.81417=0.80437 + 0.00000]
+Epoch 107 [2.7s]: train==[0.79885=0.78902 + 0.00000]
+Epoch 108 [2.7s]: train==[0.80635=0.79651 + 0.00000]
+Epoch 109 [2.8s + 117.5s]: train==[0.78821=0.77834 + 0.00987 + 0.00000], recall=0.15397, ndcg=0.23317
+Epoch 110 [2.8s]: train==[0.77714=0.76723 + 0.00000]
+Epoch 111 [2.6s]: train==[0.79371=0.78378 + 0.00000]
+Epoch 112 [2.7s]: train==[0.76544=0.75548 + 0.00000]
+Epoch 113 [2.7s]: train==[0.77139=0.76140 + 0.00000]
+Epoch 114 [2.7s]: train==[0.76305=0.75304 + 0.00000]
+Epoch 115 [2.7s]: train==[0.75492=0.74488 + 0.00000]
+Epoch 116 [2.7s]: train==[0.74951=0.73946 + 0.00000]
+Epoch 117 [2.8s]: train==[0.76179=0.75173 + 0.00000]
+Epoch 118 [2.9s]: train==[0.72972=0.71963 + 0.00000]
+Epoch 119 [2.9s + 116.4s]: train==[0.72888=0.71876 + 0.01012 + 0.00000], recall=0.15528, ndcg=0.23442
+Epoch 120 [2.7s]: train==[0.72599=0.71585 + 0.00000]
+Epoch 121 [2.7s]: train==[0.72697=0.71680 + 0.00000]
+Epoch 122 [2.7s]: train==[0.72082=0.71065 + 0.00000]
+Epoch 123 [2.6s]: train==[0.72056=0.71036 + 0.00000]
+Epoch 124 [2.7s]: train==[0.70358=0.69334 + 0.00000]
+Epoch 125 [2.7s]: train==[0.70774=0.69749 + 0.00000]
+Epoch 126 [2.8s]: train==[0.69463=0.68436 + 0.00000]
+Epoch 127 [3.0s]: train==[0.68994=0.67964 + 0.00000]
+Epoch 128 [2.7s]: train==[0.68192=0.67160 + 0.00000]
+Epoch 129 [2.7s + 118.2s]: train==[0.67714=0.66681 + 0.01033 + 0.00000], recall=0.15490, ndcg=0.23477
+Epoch 130 [2.6s]: train==[0.67039=0.66004 + 0.00000]
+Epoch 131 [2.6s]: train==[0.65893=0.64855 + 0.00000]
+Epoch 132 [2.7s]: train==[0.67515=0.66475 + 0.00000]
+Epoch 133 [2.7s]: train==[0.65154=0.64113 + 0.00000]
+Epoch 134 [2.6s]: train==[0.63565=0.62521 + 0.00000]
+Epoch 135 [2.8s]: train==[0.65779=0.64732 + 0.00000]
+Epoch 136 [2.8s]: train==[0.63748=0.62700 + 0.00000]
+Epoch 137 [2.9s]: train==[0.63006=0.61954 + 0.00000]
+Epoch 138 [2.9s]: train==[0.63364=0.62311 + 0.00000]
+Epoch 139 [2.9s + 121.3s]: train==[0.62962=0.61907 + 0.01055 + 0.00000], recall=0.15576, ndcg=0.23522
+Epoch 140 [2.6s]: train==[0.61306=0.60249 + 0.00000]
+Epoch 141 [2.6s]: train==[0.60729=0.59669 + 0.00000]
+Epoch 142 [2.8s]: train==[0.60798=0.59734 + 0.00000]
+Epoch 143 [2.8s]: train==[0.59503=0.58436 + 0.00000]
+Epoch 144 [2.7s]: train==[0.58626=0.57558 + 0.00000]
+Epoch 145 [2.8s]: train==[0.58703=0.57632 + 0.00000]
+Epoch 146 [2.8s]: train==[0.59488=0.58414 + 0.00000]
+Epoch 147 [2.7s]: train==[0.58502=0.57426 + 0.00000]
+Epoch 148 [2.8s]: train==[0.58898=0.57822 + 0.00000]
+Epoch 149 [2.8s + 96.9s]: train==[0.58283=0.57205 + 0.01078 + 0.00000], recall=0.15701, ndcg=0.23698
+Epoch 150 [2.9s]: train==[0.57141=0.56061 + 0.00000]
+Epoch 151 [2.8s]: train==[0.56392=0.55310 + 0.00000]
+Epoch 152 [2.8s]: train==[0.57728=0.56644 + 0.00000]
+Epoch 153 [2.7s]: train==[0.55707=0.54621 + 0.00000]
+Epoch 154 [2.8s]: train==[0.55536=0.54447 + 0.00000]
+Epoch 155 [2.7s]: train==[0.55849=0.54758 + 0.00000]
+Epoch 156 [2.8s]: train==[0.55435=0.54342 + 0.00000]
+Epoch 157 [2.8s]: train==[0.54389=0.53294 + 0.00000]
+Epoch 158 [2.9s]: train==[0.55581=0.54483 + 0.00000]
+Epoch 159 [2.7s + 114.8s]: train==[0.53865=0.52768 + 0.01098 + 0.00000], recall=0.15633, ndcg=0.23540
+Epoch 160 [2.6s]: train==[0.53865=0.52762 + 0.00000]
+Epoch 161 [2.8s]: train==[0.52580=0.51475 + 0.00000]
+Epoch 162 [2.8s]: train==[0.53993=0.52887 + 0.00000]
+Epoch 163 [2.6s]: train==[0.51459=0.50350 + 0.00000]
+Epoch 164 [2.3s]: train==[0.51987=0.50877 + 0.00000]
+Epoch 165 [2.3s]: train==[0.52213=0.51101 + 0.00000]
+Epoch 166 [2.1s]: train==[0.52581=0.51468 + 0.00000]
+Epoch 167 [2.2s]: train==[0.51818=0.50704 + 0.00000]
+Epoch 168 [2.3s]: train==[0.50598=0.49482 + 0.00000]
+Epoch 169 [2.2s + 90.8s]: train==[0.49773=0.48655 + 0.01119 + 0.00000], recall=0.15664, ndcg=0.23649
+Epoch 170 [2.5s]: train==[0.51434=0.50313 + 0.00000]
+Epoch 171 [2.4s]: train==[0.50979=0.49859 + 0.00000]
+Epoch 172 [2.5s]: train==[0.49735=0.48611 + 0.00000]
+Epoch 173 [2.2s]: train==[0.50421=0.49295 + 0.00000]
+Epoch 174 [2.4s]: train==[0.49664=0.48537 + 0.00000]
+Epoch 175 [2.4s]: train==[0.48195=0.47066 + 0.00000]
+Epoch 176 [2.2s]: train==[0.48163=0.47032 + 0.00000]
+Epoch 177 [2.3s]: train==[0.47653=0.46520 + 0.00000]
+Epoch 178 [2.4s]: train==[0.47859=0.46725 + 0.00000]
+Epoch 179 [2.3s + 88.8s]: train==[0.48361=0.47225 + 0.01137 + 0.00000], recall=0.15721, ndcg=0.23592
+Epoch 180 [2.4s]: train==[0.47831=0.46691 + 0.00000]
+Epoch 181 [2.2s]: train==[0.46406=0.45264 + 0.00000]
+Epoch 182 [2.5s]: train==[0.46274=0.45128 + 0.00000]
+Epoch 183 [2.5s]: train==[0.47117=0.45971 + 0.00000]
+Epoch 184 [2.4s]: train==[0.47319=0.46172 + 0.00000]
+Epoch 185 [2.2s]: train==[0.45182=0.44033 + 0.00000]
+Epoch 186 [2.4s]: train==[0.45496=0.44345 + 0.00000]
+Epoch 187 [2.5s]: train==[0.45621=0.44468 + 0.00000]
+Epoch 188 [2.6s]: train==[0.44881=0.43726 + 0.00000]
+Epoch 189 [2.3s + 94.7s]: train==[0.44669=0.43512 + 0.01157 + 0.00000], recall=0.15708, ndcg=0.23606
+Epoch 190 [2.3s]: train==[0.44092=0.42933 + 0.00000]
+Epoch 191 [2.2s]: train==[0.44278=0.43117 + 0.00000]
+Epoch 192 [2.1s]: train==[0.43950=0.42788 + 0.00000]
+Epoch 193 [2.2s]: train==[0.43984=0.42819 + 0.00000]
+Epoch 194 [2.3s]: train==[0.42772=0.41605 + 0.00000]
+Epoch 195 [2.1s]: train==[0.42923=0.41754 + 0.00000]
+Epoch 196 [2.2s]: train==[0.43588=0.42417 + 0.00000]
+Epoch 197 [2.1s]: train==[0.42217=0.41044 + 0.00000]
+Epoch 198 [2.2s]: train==[0.42975=0.41801 + 0.00000]
+Epoch 199 [2.3s + 93.4s]: train==[0.41708=0.40530 + 0.01178 + 0.00000], recall=0.15595, ndcg=0.23546
+Epoch 200 [2.1s]: train==[0.42031=0.40850 + 0.00000]
+Epoch 201 [2.1s]: train==[0.42175=0.40994 + 0.00000]
+Epoch 202 [2.2s]: train==[0.41611=0.40428 + 0.00000]
+Epoch 203 [2.2s]: train==[0.41625=0.40441 + 0.00000]
+Epoch 204 [2.3s]: train==[0.40583=0.39396 + 0.00000]
+Epoch 205 [2.2s]: train==[0.41106=0.39918 + 0.00000]
+Epoch 206 [2.3s]: train==[0.40498=0.39306 + 0.00000]
+Epoch 207 [2.2s]: train==[0.40854=0.39663 + 0.00000]
+Epoch 208 [2.2s]: train==[0.40120=0.38927 + 0.00000]
+Epoch 209 [2.1s + 96.2s]: train==[0.39816=0.38621 + 0.01196 + 0.00000], recall=0.15661, ndcg=0.23418
+Epoch 210 [2.1s]: train==[0.39297=0.38098 + 0.00000]
+Epoch 211 [2.2s]: train==[0.39718=0.38517 + 0.00000]
+Epoch 212 [2.4s]: train==[0.39995=0.38795 + 0.00000]
+Epoch 213 [2.2s]: train==[0.39864=0.38663 + 0.00000]
+Epoch 214 [2.3s]: train==[0.39688=0.38484 + 0.00000]
+Epoch 215 [2.2s]: train==[0.38185=0.36979 + 0.00000]
+Epoch 216 [2.3s]: train==[0.37831=0.36622 + 0.00000]
+Epoch 217 [2.3s]: train==[0.38694=0.37483 + 0.00000]
+Epoch 218 [2.3s]: train==[0.38498=0.37285 + 0.00000]
+Epoch 219 [2.4s + 98.4s]: train==[0.37197=0.35982 + 0.01215 + 0.00000], recall=0.15662, ndcg=0.23364
+Epoch 220 [2.1s]: train==[0.36745=0.35527 + 0.00000]
+Epoch 221 [2.4s]: train==[0.36748=0.35529 + 0.00000]
+Epoch 222 [2.2s]: train==[0.38601=0.37381 + 0.00000]
+Epoch 223 [2.1s]: train==[0.37903=0.36681 + 0.00000]
+Epoch 224 [2.1s]: train==[0.37454=0.36231 + 0.00000]
+Epoch 225 [2.1s]: train==[0.37278=0.36054 + 0.00000]
+Epoch 226 [2.1s]: train==[0.37653=0.36428 + 0.00000]
+Epoch 227 [2.3s]: train==[0.36717=0.35490 + 0.00000]
+Epoch 228 [2.2s]: train==[0.37522=0.36293 + 0.00000]
+Epoch 229 [2.1s + 109.3s]: train==[0.36643=0.35412 + 0.01231 + 0.00000], recall=0.15606, ndcg=0.23382
+Early stopping is trigger at step: 5 log:0.15605568349194957
+Best Iter=[17]@[3536.1]	recall=[0.15721	0.21956	0.26477	0.30082	0.33103], ndcg=[0.23592	0.27356	0.29790	0.31594	0.33067]

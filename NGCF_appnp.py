@@ -24,8 +24,8 @@ def _init_weights(pretrain_data, n_users, n_items, n_layers):
         print('using pretrained initialization')
 
     if args.alg_type == 'ngcf':
-        weight_size_list = [args.embed_size] + eval(args.layer_size)
         for k in range(n_layers):
+            weight_size_list = [args.embed_size] + eval(args.layer_size)
             all_weights['W_gc_%d' % k] = tf.Variable(
                     initializer([weight_size_list[k], weight_size_list[k + 1]]), name='W_gc_%d' % k)
             all_weights['b_gc_%d' % k] = tf.Variable(
@@ -36,12 +36,13 @@ def _init_weights(pretrain_data, n_users, n_items, n_layers):
             all_weights['b_bi_%d' % k] = tf.Variable(
                     initializer([1, weight_size_list[k + 1]]), name='b_bi_%d' % k)
     elif args.alg_type == 'appnp':
-        funits = [args.embed_size] + eval(args.appnp_f_units) + [args.appnp_c_units]
-        for k in range(len(funits) - 1):
-            all_weights['W_fappnp_%d' % k] = tf.Variable(
-                    initializer([funits[k], funits[k + 1]]), name='W_fappnp_%d' % k)
-            all_weights['b_fappnp_%d' % k] = tf.Variable(
-                    initializer([1, funits[k + 1]]), name='b_fappnp_%d' % k)
+        # funits = [args.embed_size] + eval(args.appnp_f_units) + [args.appnp_c_units]
+        # for k in range(len(funits) - 1):
+        #     all_weights['W_fappnp_%d' % k] = tf.Variable(
+        #             initializer([funits[k], funits[k + 1]]), name='W_fappnp_%d' % k)
+        #     all_weights['b_fappnp_%d' % k] = tf.Variable(
+        #             initializer([1, funits[k + 1]]), name='b_fappnp_%d' % k)
+        pass
 
     return all_weights
 
@@ -131,20 +132,66 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
     u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
     return u_g_embeddings, i_g_embeddings
     
+# version 1.0
+# def _create_appnp_embed(norm_adj, weights, n_users, n_items, keep_prob=0.5):
+#     ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+#     all_embeddings = [ego_embeddings]
+#     local_logits = ego_embeddings
+#     num_funits = len(eval(args.appnp_f_units)) + 1
+#     for k in range(num_funits):
+#         local_logits = tf.nn.relu(tf.matmul(local_logits, weights['W_fappnp_%d' % k]) + weights['b_fappnp_%d' % k])
+#         local_logits = tf.nn.dropout(local_logits, keep_prob)  # ckpt: keep prob for appnp mixed_dropout
+#     coo = norm_adj.tocoo()
+#     coo_indices = np.mat([coo.row, coo.col]).transpose()
+#     A_hat_tf = tf.SparseTensor(coo_indices, np.array(coo.data, dtype=np.float32), coo.shape)
+#     all_embeddings.append(local_logits)
+#     Zs_prop = local_logits
+#     for _ in range(args.appnp_niter):
+#         A_drop_val = tf.nn.dropout(A_hat_tf.values, keep_prob)
+#         A_drop = tf.SparseTensor(A_hat_tf.indices, A_drop_val, A_hat_tf.dense_shape)
+#         Zs_prop = tf.sparse_tensor_dense_matmul(A_drop, Zs_prop) + args.appnp_alpha * local_logits
+#     all_embeddings.append(Zs_prop)
+#     all_embeddings = tf.concat(all_embeddings, 1)
+#     u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+#     return u_g_embeddings, i_g_embeddings
 
+# version 1.1
+# def _create_appnp_embed(norm_adj, weights, n_users, n_items, keep_prob=0.5):
+#     ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+#     all_embeddings = [ego_embeddings]
+#     local_logits = ego_embeddings
+#     num_funits = len(eval(args.appnp_f_units)) + 1
+#     for k in range(num_funits):
+#         local_logits = tf.nn.relu(tf.matmul(local_logits, weights['W_fappnp_%d' % k]) + weights['b_fappnp_%d' % k])
+#         local_logits = tf.nn.dropout(local_logits, keep_prob)  # ckpt: keep prob for appnp mixed_dropout
+#     coo = norm_adj.tocoo()
+#     coo_indices = np.mat([coo.row, coo.col]).transpose()
+#     A_hat_tf = tf.SparseTensor(coo_indices, np.array(coo.data, dtype=np.float32), coo.shape)
+#     all_embeddings.append(local_logits)
+#     Zs_prop = local_logits
+#     for _ in range(args.appnp_niter):
+#         A_drop_val = tf.nn.dropout(A_hat_tf.values, keep_prob)
+#         A_drop = tf.SparseTensor(A_hat_tf.indices, A_drop_val, A_hat_tf.dense_shape)
+#         Zs_prop = tf.sparse_tensor_dense_matmul(A_drop, Zs_prop) + args.appnp_alpha * local_logits
+#     all_embeddings.append(Zs_prop)
+#     all_embeddings = tf.concat(all_embeddings, 1)
+#     u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+#     return u_g_embeddings, i_g_embeddings
+
+# version 1.2
 def _create_appnp_embed(norm_adj, weights, n_users, n_items, keep_prob=0.5):
     ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
     all_embeddings = [ego_embeddings]
-    local_logits = ego_embeddings
-    num_funits = len(eval(args.appnp_f_units)) + 1
-    for k in range(num_funits):
-        local_logits = tf.nn.relu(tf.matmul(local_logits, weights['W_fappnp_%d' % k]) + weights['b_fappnp_%d' % k])
-        local_logits = tf.nn.dropout(local_logits, keep_prob)  # ckpt: keep prob for appnp mixed_dropout
+    # local_logits = ego_embeddings
+    # num_funits = len(eval(args.appnp_f_units)) + 1
+    # for k in range(num_funits):
+    #     local_logits = tf.nn.relu(tf.matmul(local_logits, weights['W_fappnp_%d' % k]) + weights['b_fappnp_%d' % k])
+    #     local_logits = tf.nn.dropout(local_logits, keep_prob)  # ckpt: keep prob for appnp mixed_dropout
+    # all_embeddings.append(local_logits)
     coo = norm_adj.tocoo()
     coo_indices = np.mat([coo.row, coo.col]).transpose()
     A_hat_tf = tf.SparseTensor(coo_indices, np.array(coo.data, dtype=np.float32), coo.shape)
-    all_embeddings.append(local_logits)
-    Zs_prop = local_logits
+    Zs_prop = ego_embeddings
     for _ in range(args.appnp_niter):
         A_drop_val = tf.nn.dropout(A_hat_tf.values, keep_prob)
         A_drop = tf.SparseTensor(A_hat_tf.indices, A_drop_val, A_hat_tf.dense_shape)
