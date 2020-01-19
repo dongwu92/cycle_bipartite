@@ -57,6 +57,8 @@ def parse_args():
                         help='sub-version for appnp')
     parser.add_argument('--appnp_keepprob', type=float, default=0.5,
                         help='sub-version for appnp')
+    parser.add_argument('--n_head', type=int, default=2,
+                        help='sub-version for appnp')
 
     parser.add_argument('--gpu_ids', type=str, default='0',
                         help='0 for NAIS_prod, 1 for NAIS_concat')
