@@ -125,7 +125,11 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
         return u_g_embeddings, i_g_embeddings
     elif args.sub_version == 1.1:
         # Generate a set of adjacency sub-matrix.
-        A_hat = _A_hat(norm_adj, node_dropout)
+        if args.node_dropout_flag:
+            # node dropout.
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
         ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
         all_embeddings = [ego_embeddings]
         for k in range(0, n_layers):
@@ -142,7 +146,11 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
         return u_g_embeddings, i_g_embeddings
     elif args.sub_version == 1.11:
         # Generate a set of adjacency sub-matrix.
-        A_hat = _A_hat(norm_adj, node_dropout)
+        if args.node_dropout_flag:
+            # node dropout.
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
         ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
         all_embeddings = [ego_embeddings]
         for k in range(0, n_layers):
@@ -159,7 +167,11 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
         return u_g_embeddings, i_g_embeddings
     elif args.sub_version == 1.12:
         # Generate a set of adjacency sub-matrix.
-        A_hat = _A_hat(norm_adj, node_dropout)
+        if args.node_dropout_flag:
+            # node dropout.
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
         ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
         all_embeddings = [ego_embeddings]
         for k in range(0, n_layers):
@@ -176,7 +188,11 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
         return u_g_embeddings, i_g_embeddings
     elif args.sub_version == 1.13:
         # Generate a set of adjacency sub-matrix.
-        A_hat = _A_hat(norm_adj, node_dropout)
+        if args.node_dropout_flag:
+            # node dropout.
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
         ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
         all_embeddings = [ego_embeddings]
         for k in range(0, n_layers):
@@ -193,7 +209,11 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
         return u_g_embeddings, i_g_embeddings
     elif args.sub_version == 1.14:
         # Generate a set of adjacency sub-matrix.
-        A_hat = _A_hat(norm_adj, node_dropout)
+        if args.node_dropout_flag:
+            # node dropout.
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
         ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
         all_embeddings = [ego_embeddings]
         for k in range(0, n_layers):
