@@ -240,6 +240,7 @@ class NGCF(object):
         '''
         nb_nodes = self.n_users + self.n_items
         with tf.name_scope('sp_attn'):
+            seq = tf.reshape(seq, [1, self.n_users + self.n_items, -1])
             if in_drop != 0.0:
                 seq = tf.nn.dropout(seq, 1.0 - in_drop)
 
