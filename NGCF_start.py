@@ -248,6 +248,27 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
         all_embeddings = tf.concat(all_embeddings, 1)
         u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
         return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 1.2:  # multi-head
+        n_head = 3
+        if args.node_dropout_flag:
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        for k in range(0, n_layers):
+            temp_embed = []
+            for f in range(n_fold):
+                temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+            side_embeddings = tf.concat(temp_embed, 0)
+            for j in range(n_head):
+                ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % j]) + weights['b_gc_%d' % j]
+                ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
     return None, None
 
 def _create_bpr_loss(users, pos_items, neg_items, decay):
