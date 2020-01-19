@@ -81,6 +81,8 @@ class NGCF(object):
         """
         if self.alg_type in ['ngcf']:
             self.ua_embeddings, self.ia_embeddings = self._create_ngcf_embed()
+        elif self.alg_type in ['gat']:
+            self.ua_embeddings, self.ia_embeddings = self._create_gat_embed()
 
         """
         *********************************************************
@@ -212,6 +214,123 @@ class NGCF(object):
         u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [self.n_users, self.n_items], 0)
         return u_g_embeddings, i_g_embeddings
 
+
+    ###########################################################
+    ##  Graph Attention Networks for Collaborative Filtering ##
+    ###########################################################
+    def _preprocess_adj_bias(self):
+        adj = self.norm_adj
+        num_nodes = adj.shape[0]
+        adj = adj + sp.eye(num_nodes)  # self-loop
+        adj[adj > 0.0] = 1.0
+        if not sp.isspmatrix_coo(adj):
+            adj = adj.tocoo()
+        adj = adj.astype(np.float32)
+        indices = np.vstack((adj.col, adj.row)).transpose()  # This is where I made a mistake, I used (adj.row, adj.col) instead
+        return tf.SparseTensor(indices=indices, values=adj.data, dense_shape=adj.shape)
+
+    def _sp_attn_head(self, seq, adj_mat, activation, in_drop=0.0, coef_drop=0.0, residual=False):
+        '''
+            seq: [1, 2708, 1433]
+            seq_fts: [1, 2708, 8]
+            f_1: [1, 2708, 1]
+            f_2: [1, 2708, 1]
+            f_1: [2708, 1]
+            f_2: [2708, 1]
+        '''
+        nb_nodes = self.n_users + self.n_items
+        out_sz = self.emb_dim
+        with tf.name_scope('sp_attn'):
+            if in_drop != 0.0:
+                seq = tf.nn.dropout(seq, 1.0 - in_drop)
+
+            seq_fts = tf.layers.conv1d(seq, out_sz, 1, use_bias=False)
+
+            # simplest self-attention possible
+            f_1 = tf.layers.conv1d(seq_fts, 1, 1)
+            f_2 = tf.layers.conv1d(seq_fts, 1, 1)
+            
+            f_1 = tf.reshape(f_1, (nb_nodes, 1))
+            f_2 = tf.reshape(f_2, (nb_nodes, 1))
+
+            f_1 = adj_mat * f_1
+            f_2 = adj_mat * tf.transpose(f_2, [1,0])
+
+            logits = tf.sparse_add(f_1, f_2)
+            lrelu = tf.SparseTensor(indices=logits.indices, 
+                    values=tf.nn.leaky_relu(logits.values), 
+                    dense_shape=logits.dense_shape)
+            coefs = tf.sparse_softmax(lrelu)
+
+            if coef_drop != 0.0:
+                coefs = tf.SparseTensor(indices=coefs.indices,
+                        values=tf.nn.dropout(coefs.values, 1.0 - coef_drop),
+                        dense_shape=coefs.dense_shape)
+            if in_drop != 0.0:
+                seq_fts = tf.nn.dropout(seq_fts, 1.0 - in_drop)
+
+            # As tf.sparse_tensor_dense_matmul expects its arguments to have rank-2,
+            # here we make an assumption that our input is of batch size 1, and reshape appropriately.
+            # The method will fail in all other cases!
+            coefs = tf.sparse_reshape(coefs, [nb_nodes, nb_nodes])
+            seq_fts = tf.squeeze(seq_fts)
+            vals = tf.sparse_tensor_dense_matmul(coefs, seq_fts)
+            vals = tf.expand_dims(vals, axis=0)
+            vals.set_shape([1, nb_nodes, out_sz])
+            ret = tf.contrib.layers.bias_add(vals)
+
+            # residual connection
+            if residual:
+                if seq.shape[-1] != ret.shape[-1]:
+                    ret = ret + tf.layers.conv1d(seq, ret.shape[-1], 1) # activation
+                else:
+                    ret = ret + seq
+
+            return activation(ret)  # activation
+
+    def _sp_gat_inference(self, inputs, attn_drop, ffd_drop,
+            n_heads, activation=tf.nn.elu, residual=False):
+        nb_classes = self.emb_dim
+        nb_nodes = self.n_users + self.n_items
+        adj_mat = self._preprocess_adj_bias()
+
+        attns = []
+        for _ in range(n_heads[0]):
+            attns.append(self._sp_attn_head(inputs, adj_mat=adj_mat,
+                activation=activation, in_drop=ffd_drop, 
+                coef_drop=attn_drop, residual=False))
+        h_1 = tf.concat(attns, axis=-1)
+        all_embeddings = [h_1]
+        for i in range(1, self.n_layers):
+            attns = []
+            for _ in range(n_heads[i]):
+                attns.append(self._sp_attn_head(h_1, adj_mat=adj_mat,
+                    activation=activation, in_drop=ffd_drop, 
+                    coef_drop=attn_drop, residual=residual))
+            h_1 = tf.concat(attns, axis=-1)
+            all_embeddings.append(h_1)
+        # out = []
+        # for i in range(n_heads[-1]):
+        #     out.append(self._sp_attn_head(h_1, adj_mat=adj_mat,
+        #         activation=lambda x: x, in_drop=ffd_drop, 
+        #         coef_drop=attn_drop, residual=False))
+        # logits = tf.add_n(out) / n_heads[-1]
+        # return logits
+
+        return all_embeddings
+
+    def _create_gat_embed(self):
+        # Generate a set of adjacency sub-matrix.
+        n_heads = [8] * self.n_layers
+        ego_embeddings = tf.concat([self.weights['user_embedding'], self.weights['item_embedding']], axis=0)
+        all_embeddings = self._sp_gat_inference(ego_embeddings, self.node_dropout[0], self.node_dropout[0], n_heads)
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [self.n_users, self.n_items], 0)
+        return u_g_embeddings, i_g_embeddings
+
+
+
+
     def create_bpr_loss(self, users, pos_items, neg_items):
         pos_scores = tf.reduce_sum(tf.multiply(users, pos_items), axis=1)
         neg_scores = tf.reduce_sum(tf.multiply(users, neg_items), axis=1)
@@ -275,7 +394,11 @@ if __name__ == '__main__':
     """
     plain_adj, norm_adj, mean_adj = data_generator.get_adj_mat()
 
-    if args.adj_type == 'plain':
+    if args.alg_type == 'gat':
+        config['norm_adj'] = plain_adj
+        print('use the plain adjacency matrix')
+
+    elif args.adj_type == 'plain':
         config['norm_adj'] = plain_adj
         print('use the plain adjacency matrix')
 
