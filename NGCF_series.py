@@ -241,6 +241,102 @@ class NGCF(object):
             all_embeddings = tf.concat(all_embeddings, 1)
             u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [self.n_users, self.n_items], 0)
             return u_g_embeddings, i_g_embeddings
+        elif args.sub_version == 1.02:
+            # Generate a set of adjacency sub-matrix.
+            A_hat = self._A_hat(self.norm_adj)
+            ego_embeddings = tf.concat([self.weights['user_embedding'], self.weights['item_embedding']], axis=0)
+            all_embeddings = [ego_embeddings]
+            for k in range(0, self.n_layers):
+                side_embeddings = tf.sparse_tensor_dense_matmul(A_hat, ego_embeddings)
+                # transformed sum messages of neighbors.
+                sum_embeddings = tf.matmul(side_embeddings, self.weights['W_gc_%d' % k]) + self.weights['b_gc_%d' % k]
+                # bi messages of neighbors.
+                # bi_embeddings = tf.multiply(ego_embeddings, side_embeddings)
+                # transformed bi messages of neighbors.
+                # bi_embeddings = tf.matmul(bi_embeddings, self.weights['W_bi_%d' % k]) + self.weights['b_bi_%d' % k]
+                # non-linear activation.
+                # ego_embeddings = sum_embeddings + bi_embeddings
+                ego_embeddings = sum_embeddings
+                # message dropout.
+                ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - self.mess_dropout[k])
+                # normalize the distribution of embeddings.
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+            all_embeddings = tf.concat(all_embeddings, 1)
+            u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [self.n_users, self.n_items], 0)
+            return u_g_embeddings, i_g_embeddings
+        elif args.sub_version == 1.021:
+            # Generate a set of adjacency sub-matrix.
+            A_hat = self._A_hat(self.norm_adj)
+            ego_embeddings = tf.concat([self.weights['user_embedding'], self.weights['item_embedding']], axis=0)
+            all_embeddings = [ego_embeddings]
+            for k in range(0, self.n_layers):
+                side_embeddings = tf.sparse_tensor_dense_matmul(A_hat, ego_embeddings)
+                # transformed sum messages of neighbors.
+                sum_embeddings = tf.matmul(side_embeddings, self.weights['W_gc_0']) + self.weights['b_gc_0']
+                # bi messages of neighbors.
+                # bi_embeddings = tf.multiply(ego_embeddings, side_embeddings)
+                # transformed bi messages of neighbors.
+                # bi_embeddings = tf.matmul(bi_embeddings, self.weights['W_bi_%d' % k]) + self.weights['b_bi_%d' % k]
+                # non-linear activation.
+                # ego_embeddings = sum_embeddings + bi_embeddings
+                ego_embeddings = sum_embeddings
+                # message dropout.
+                ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - self.mess_dropout[k])
+                # normalize the distribution of embeddings.
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+            all_embeddings = tf.concat(all_embeddings, 1)
+            u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [self.n_users, self.n_items], 0)
+            return u_g_embeddings, i_g_embeddings
+        elif args.sub_version == 1.03:
+            # Generate a set of adjacency sub-matrix.
+            A_hat = self._A_hat(self.norm_adj)
+            ego_embeddings = tf.concat([self.weights['user_embedding'], self.weights['item_embedding']], axis=0)
+            all_embeddings = [ego_embeddings]
+            for k in range(0, self.n_layers):
+                side_embeddings = tf.sparse_tensor_dense_matmul(A_hat, ego_embeddings)
+                # transformed sum messages of neighbors.
+                # sum_embeddings = tf.matmul(side_embeddings, self.weights['W_gc_%d' % k]) + self.weights['b_gc_%d' % k]
+                # bi messages of neighbors.
+                bi_embeddings = tf.multiply(ego_embeddings, side_embeddings)
+                # transformed bi messages of neighbors.
+                bi_embeddings = tf.matmul(bi_embeddings, self.weights['W_bi_%d' % k]) + self.weights['b_bi_%d' % k]
+                # non-linear activation.
+                # ego_embeddings = sum_embeddings + bi_embeddings
+                ego_embeddings = bi_embeddings
+                # message dropout.
+                ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - self.mess_dropout[k])
+                # normalize the distribution of embeddings.
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+            all_embeddings = tf.concat(all_embeddings, 1)
+            u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [self.n_users, self.n_items], 0)
+            return u_g_embeddings, i_g_embeddings
+        elif args.sub_version == 1.031:
+            # Generate a set of adjacency sub-matrix.
+            A_hat = self._A_hat(self.norm_adj)
+            ego_embeddings = tf.concat([self.weights['user_embedding'], self.weights['item_embedding']], axis=0)
+            all_embeddings = [ego_embeddings]
+            for k in range(0, self.n_layers):
+                side_embeddings = tf.sparse_tensor_dense_matmul(A_hat, ego_embeddings)
+                # transformed sum messages of neighbors.
+                # sum_embeddings = tf.matmul(side_embeddings, self.weights['W_gc_%d' % k]) + self.weights['b_gc_%d' % k]
+                # bi messages of neighbors.
+                bi_embeddings = tf.multiply(ego_embeddings, side_embeddings)
+                # transformed bi messages of neighbors.
+                bi_embeddings = tf.matmul(bi_embeddings, self.weights['W_bi_0']) + self.weights['b_bi_0']
+                # non-linear activation.
+                # ego_embeddings = sum_embeddings + bi_embeddings
+                ego_embeddings = bi_embeddings
+                # message dropout.
+                ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - self.mess_dropout[k])
+                # normalize the distribution of embeddings.
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+            all_embeddings = tf.concat(all_embeddings, 1)
+            u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [self.n_users, self.n_items], 0)
+            return u_g_embeddings, i_g_embeddings
         return None, None
             
 
