@@ -42,7 +42,30 @@ def _init_weights(pretrain_data, n_users, n_items, n_layers):
         #             initializer([funits[k], funits[k + 1]]), name='W_fappnp_%d' % k)
         #     all_weights['b_fappnp_%d' % k] = tf.Variable(
         #             initializer([1, funits[k + 1]]), name='b_fappnp_%d' % k)
-        pass
+        if args.sub_version == 1.7:
+            for k in range(args.n_layers_generator):
+                all_weights['gW_uv_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]),
+                                                          name='gW_uv_%d' % k)
+                all_weights['gb_uv_%d' % k] = tf.Variable(initializer([args.embed_size]), name='gb_uv_%d' % k)
+                all_weights['gW_vu_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]),
+                                                          name='gW_vu_%d' % k)
+                all_weights['gb_vu_%d' % k] = tf.Variable(initializer([args.embed_size]), name='gb_vu_%d' % k)
+        elif args.sub_version == 1.8:
+            for k in range(args.n_layers_generator):
+                all_weights['gW_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]),
+                                                          name='gW_%d' % k)
+                all_weights['gb_%d' % k] = tf.Variable(initializer([args.embed_size]), name='gb_%d' % k)
+    elif args.alg_type == 'appnpuv' or args.alg_type == 'appnpcgan':
+        for k in range(args.n_layers_generator):
+            all_weights['gW_uv_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]), name='gW_uv_%d' % k)
+            all_weights['gb_uv_%d' % k] = tf.Variable(initializer([args.embed_size]), name='gb_uv_%d' % k)
+            all_weights['gW_vu_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]), name='gW_vu_%d' % k)
+            all_weights['gb_vu_%d' % k] = tf.Variable(initializer([args.embed_size]), name='gb_vu_%d' % k)
+        for k in range(args.n_layers_discriminator):
+            all_weights['dW_uv_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]), name='dW_uv_%d' % k)
+            all_weights['db_uv_%d' % k] = tf.Variable(initializer([args.embed_size]), name='db_uv_%d' % k)
+            all_weights['dW_vu_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]), name='dW_vu_%d' % k)
+            all_weights['db_vu_%d' % k] = tf.Variable(initializer([args.embed_size]), name='db_vu_%d' % k)
 
     return all_weights
 
@@ -102,35 +125,93 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
 
     ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
     all_embeddings = [ego_embeddings]
+    z0_embeddings = ego_embeddings
 
-    for k in range(0, n_layers):
-        temp_embed = []
-        for f in range(n_fold):
-            temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+    if args.sub_version == 0:
+        for k in range(0, n_layers):
+            temp_embed = []
+            for f in range(n_fold):
+                temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
 
-        # sum messages of neighbors.
-        side_embeddings = tf.concat(temp_embed, 0)
-        # transformed sum messages of neighbors.
-        sum_embeddings = tf.nn.leaky_relu(
-            tf.matmul(side_embeddings, weights['W_gc_%d' % k]) + weights['b_gc_%d' % k])
+            # sum messages of neighbors.
+            side_embeddings = tf.concat(temp_embed, 0)
+            # transformed sum messages of neighbors.
+            sum_embeddings = tf.nn.leaky_relu(
+                tf.matmul(side_embeddings, weights['W_gc_%d' % k]) + weights['b_gc_%d' % k])
 
-        # bi messages of neighbors.
-        bi_embeddings = tf.multiply(ego_embeddings, side_embeddings)
-        # transformed bi messages of neighbors.
-        bi_embeddings = tf.nn.leaky_relu(
-            tf.matmul(bi_embeddings, weights['W_bi_%d' % k]) + weights['b_bi_%d' % k])
+            # bi messages of neighbors.
+            bi_embeddings = tf.multiply(ego_embeddings, side_embeddings)
+            # transformed bi messages of neighbors.
+            bi_embeddings = tf.nn.leaky_relu(
+                tf.matmul(bi_embeddings, weights['W_bi_%d' % k]) + weights['b_bi_%d' % k])
 
-        # non-linear activation.
-        ego_embeddings = sum_embeddings + bi_embeddings
-        # message dropout.
-        ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+            # non-linear activation.
+            ego_embeddings = sum_embeddings + bi_embeddings
+            # message dropout.
+            ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
 
-        # normalize the distribution of embeddings.
-        norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
-        all_embeddings += [norm_embeddings]
-    all_embeddings = tf.concat(all_embeddings, 1)
-    u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
-    return u_g_embeddings, i_g_embeddings
+            # normalize the distribution of embeddings.
+            norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+            all_embeddings += [norm_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 0.1:
+        for k in range(0, n_layers):
+            temp_embed = []
+            for f in range(n_fold):
+                temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+            side_embeddings = tf.concat(temp_embed, 0)
+            ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_0'])  # + weights['b_gc_%d' % k]
+            norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+            all_embeddings += [norm_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 0.2:
+        for k in range(0, n_layers):
+            temp_embed = []
+            for f in range(n_fold):
+                temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+            side_embeddings = tf.concat(temp_embed, 0)
+            ego_embeddings = (1 - args.appnp_alpha) * tf.matmul(side_embeddings, weights['W_gc_0']) + \
+                            args.appnp_alpha * z0_embeddings # + weights['b_gc_%d' % k]
+            norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+            all_embeddings += [norm_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
+    return None, None
+
+#     # Generate a set of adjacency sub-matrix.
+#     if args.node_dropout_flag:
+#         # node dropout.
+#         A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+#     else:
+#         A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+#
+#     ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+#     all_embeddings = [ego_embeddings]
+#
+#     for k in range(0, n_layers):
+#         temp_embed = []
+#         for f in range(n_fold):
+#             temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+#
+#         # sum messages of neighbors.
+#         side_embeddings = tf.concat(temp_embed, 0)
+#         # transformed sum messages of neighbors.
+#         ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_0']) # + weights['b_gc_%d' % k]
+#         # message dropout.
+#         # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+#
+#         # normalize the distribution of embeddings.
+#         norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+#         all_embeddings += [norm_embeddings]
+#     all_embeddings = tf.concat(all_embeddings, 1)
+#     u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+#     return u_g_embeddings, i_g_embeddings
+
     
 # version 1.0
 # def _create_appnp_embed(norm_adj, weights, n_users, n_items, keep_prob=0.5):
@@ -179,27 +260,372 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
 #     return u_g_embeddings, i_g_embeddings
 
 # version 1.2
-def _create_appnp_embed(norm_adj, weights, n_users, n_items, keep_prob=0.5):
-    ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
-    all_embeddings = [ego_embeddings]
-    # local_logits = ego_embeddings
-    # num_funits = len(eval(args.appnp_f_units)) + 1
-    # for k in range(num_funits):
-    #     local_logits = tf.nn.relu(tf.matmul(local_logits, weights['W_fappnp_%d' % k]) + weights['b_fappnp_%d' % k])
-    #     local_logits = tf.nn.dropout(local_logits, keep_prob)  # ckpt: keep prob for appnp mixed_dropout
-    # all_embeddings.append(local_logits)
-    coo = norm_adj.tocoo()
-    coo_indices = np.mat([coo.row, coo.col]).transpose()
-    A_hat_tf = tf.SparseTensor(coo_indices, np.array(coo.data, dtype=np.float32), coo.shape)
-    Zs_prop = ego_embeddings
-    for _ in range(args.appnp_niter):
-        A_drop_val = tf.nn.dropout(A_hat_tf.values, keep_prob)
-        A_drop = tf.SparseTensor(A_hat_tf.indices, A_drop_val, A_hat_tf.dense_shape)
-        Zs_prop = tf.sparse_tensor_dense_matmul(A_drop, Zs_prop) + args.appnp_alpha * ego_embeddings
-        all_embeddings.append(Zs_prop)
-    all_embeddings = tf.concat(all_embeddings, 1)
-    u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
-    return u_g_embeddings, i_g_embeddings
+# def _create_appnp_embed(norm_adj, weights, n_users, n_items, keep_prob=0.5):
+    # ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+    # all_embeddings = [ego_embeddings]
+    # coo = norm_adj.tocoo()
+    # coo_indices = np.mat([coo.row, coo.col]).transpose()
+    # A_hat_tf = tf.SparseTensor(coo_indices, np.array(coo.data, dtype=np.float32), coo.shape)
+    # Zs_prop = ego_embeddings
+    # for _ in range(args.appnp_niter):
+    #     A_drop_val = tf.nn.dropout(A_hat_tf.values, keep_prob)
+    #     A_drop = tf.SparseTensor(A_hat_tf.indices, A_drop_val, A_hat_tf.dense_shape)
+    #     Zs_prop = tf.sparse_tensor_dense_matmul(A_drop, Zs_prop) + args.appnp_alpha * ego_embeddings
+    #     all_embeddings.append(Zs_prop)
+    # all_embeddings = tf.concat(all_embeddings, 1)
+    # u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+    # return u_g_embeddings, i_g_embeddings
+
+# version 1.2.1
+# def _create_appnp_embed(norm_adj, weights, n_users, n_items, keep_prob=0.8):
+#     ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+#     all_embeddings = [ego_embeddings]
+#     coo = norm_adj.tocoo()
+#     coo_indices = np.mat([coo.row, coo.col]).transpose()
+#     A_hat_tf = tf.SparseTensor(coo_indices, np.array(coo.data, dtype=np.float32), coo.shape)
+#     Zs_prop = ego_embeddings
+#     for _ in range(args.appnp_niter):
+#         A_drop_val = tf.nn.dropout(A_hat_tf.values, keep_prob)
+#         A_drop = tf.SparseTensor(A_hat_tf.indices, A_drop_val, A_hat_tf.dense_shape)
+#         Zs_prop = (1 - args.appnp_alpha) * tf.sparse_tensor_dense_matmul(A_drop, Zs_prop) + args.appnp_alpha * ego_embeddings
+#         all_embeddings.append(Zs_prop)
+#     all_embeddings = tf.concat(all_embeddings, 1)
+#     u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+#     return u_g_embeddings, i_g_embeddings
+
+# version 1.3
+# def _create_appnp_embed(norm_adj, weights, n_users, n_items, keep_prob=0.5):
+#     ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+#     all_embeddings = [ego_embeddings]
+#     coo = norm_adj.tocoo()
+#     coo_indices = np.mat([coo.row, coo.col]).transpose()
+#     A_hat_tf = tf.SparseTensor(coo_indices, np.array(coo.data, dtype=np.float32), coo.shape)
+#     Zs_prop = ego_embeddings
+#     for _ in range(args.appnp_niter):
+#         A_drop_val = tf.nn.dropout(A_hat_tf.values, keep_prob)
+#         A_drop = tf.SparseTensor(A_hat_tf.indices, A_drop_val, A_hat_tf.dense_shape)
+#         # Zs_prop = (1 - args.appnp_alpha) * tf.sparse_tensor_dense_matmul(A_drop, Zs_prop) + args.appnp_alpha * ego_embeddings
+#         Zs_prop = tf.sparse_tensor_dense_matmul(A_drop, Zs_prop)
+#         all_embeddings.append(Zs_prop)
+#     all_embeddings = tf.concat(all_embeddings, 1)
+#     u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+#     return u_g_embeddings, i_g_embeddings
+
+# version 1.5
+# def _create_appnp_embed(norm_adj, weights, n_users, n_items, keep_prob=0.5):
+#     initializer = tf.contrib.layers.xavier_initializer()
+#     adptive_weight0 = tf.Variable(initializer([1]), name='aw0')
+#     ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+#     all_embeddings = [adptive_weight0 * ego_embeddings]
+#     coo = norm_adj.tocoo()
+#     coo_indices = np.mat([coo.row, coo.col]).transpose()
+#     A_hat_tf = tf.SparseTensor(coo_indices, np.array(coo.data, dtype=np.float32), coo.shape)
+#     Zs_prop = ego_embeddings
+#     for k in range(args.appnp_niter):
+#         A_drop_val = tf.nn.dropout(A_hat_tf.values, keep_prob)
+#         A_drop = tf.SparseTensor(A_hat_tf.indices, A_drop_val, A_hat_tf.dense_shape)
+#         Zs_prop = (1 - args.appnp_alpha) * tf.sparse_tensor_dense_matmul(A_drop, Zs_prop) + args.appnp_alpha * ego_embeddings
+#         # Zs_prop = tf.sparse_tensor_dense_matmul(A_drop, Zs_prop)
+#         # all_embeddings.append(Zs_prop)
+#         adptive_weight = tf.Variable(initializer([1]), name='aw%d' % k)
+#         all_embeddings.append(adptive_weight * Zs_prop)
+#     all_embeddings = tf.concat(all_embeddings, 1)
+#     u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+#     return u_g_embeddings, i_g_embeddings
+
+# version 1.5.1 depressed
+#         ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+#         all_embeddings = [ego_embeddings]
+#         coo = norm_adj.tocoo()
+#         coo_indices = np.mat([coo.row, coo.col]).transpose()
+#         A_hat_tf = tf.SparseTensor(coo_indices, np.array(coo.data, dtype=np.float32), coo.shape)
+#         A_drop_val = tf.nn.dropout(A_hat_tf.values, args.appnp_keepprob)
+#         A_drop = tf.SparseTensor(A_hat_tf.indices, A_drop_val, A_hat_tf.dense_shape)
+#         Zs_prop = ego_embeddings
+#         for _ in range(args.appnp_niter):
+#             Zs_prop = (1 - args.appnp_alpha) * tf.sparse_tensor_dense_matmul(A_drop,
+#                                                                              Zs_prop) + args.appnp_alpha * ego_embeddings
+#             all_embeddings.append(Zs_prop)
+#         all_embeddings = tf.concat(all_embeddings, 1)
+#         u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+#         return u_g_embeddings, i_g_embeddings
+
+# version 1.2.1
+def _create_appnp_embed(norm_adj, weights, n_users, n_items):
+    if args.sub_version == 1.21:
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        coo = norm_adj.tocoo()
+        coo_indices = np.mat([coo.row, coo.col]).transpose()
+        A_hat_tf = tf.SparseTensor(coo_indices, np.array(coo.data, dtype=np.float32), coo.shape)
+        Zs_prop = ego_embeddings
+        for _ in range(args.appnp_niter):
+            A_drop_val = tf.nn.dropout(A_hat_tf.values, args.appnp_keepprob)
+            A_drop = tf.SparseTensor(A_hat_tf.indices, A_drop_val, A_hat_tf.dense_shape)
+            Zs_prop = (1 - args.appnp_alpha) * tf.sparse_tensor_dense_matmul(A_drop,
+                                                                             Zs_prop) + args.appnp_alpha * ego_embeddings
+            all_embeddings.append(Zs_prop)
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 1.6:
+        # ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [[weights['user_embedding']], [weights['item_embedding']]]
+        coo = norm_adj.tocoo()
+        coo_indices = np.mat([coo.row, coo.col]).transpose()
+        A_hat_tf = tf.SparseTensor(coo_indices, np.array(coo.data, dtype=np.float32), coo.shape)
+        Zs_prop_user, Zs_prop_item = weights['user_embedding'], weights['item_embedding']
+        A_hat_tf_user_user = tf.sparse.slice(A_hat_tf, [0, 0], [n_users, n_users])
+        A_hat_tf_user_item = tf.sparse.slice(A_hat_tf, [0, n_users], [n_users, n_items])
+        A_hat_tf_item_user = tf.sparse.slice(A_hat_tf, [n_users, 0], [n_items, n_users])
+        A_hat_tf_item_item = tf.sparse.slice(A_hat_tf, [n_users, n_users], [n_items, n_items])
+        for _ in range(args.appnp_niter):
+            A_drop_val_user_user = tf.nn.dropout(A_hat_tf_user_user.values, args.appnp_keepprob)
+            A_drop_val_user_item = tf.nn.dropout(A_hat_tf_user_item.values, args.appnp_keepprob)
+            A_drop_val_item_user = tf.nn.dropout(A_hat_tf_item_user.values, args.appnp_keepprob)
+            A_drop_val_item_item = tf.nn.dropout(A_hat_tf_item_item.values, args.appnp_keepprob)
+            A_drop_user_user = tf.SparseTensor(A_hat_tf_user_user.indices, A_drop_val_user_user, A_hat_tf_user_user.dense_shape)
+            A_drop_user_item = tf.SparseTensor(A_hat_tf_user_item.indices, A_drop_val_user_item, A_hat_tf_user_item.dense_shape)
+            A_drop_item_user = tf.SparseTensor(A_hat_tf_item_user.indices, A_drop_val_item_user, A_hat_tf_item_user.dense_shape)
+            A_drop_item_item = tf.SparseTensor(A_hat_tf_item_item.indices, A_drop_val_item_item, A_hat_tf_item_item.dense_shape)
+            Zs_prop_user = (1 - args.appnp_alpha) * (tf.sparse_tensor_dense_matmul(A_drop_user_user, Zs_prop_user) + \
+                            tf.sparse_tensor_dense_matmul(A_drop_user_item, Zs_prop_item)) + \
+                            args.appnp_alpha * weights['user_embedding']
+            Zs_prop_item = (1 - args.appnp_alpha) * (tf.sparse_tensor_dense_matmul(A_drop_item_user, Zs_prop_user) + \
+                            tf.sparse_tensor_dense_matmul(A_drop_item_item, Zs_prop_item)) + \
+                            args.appnp_alpha * weights['item_embedding']
+            all_embeddings[0].append(Zs_prop_user)
+            all_embeddings[1].append(Zs_prop_item)
+        # all_embeddings = tf.concat(all_embeddings, 1)
+        # u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        u_g_embeddings = tf.concat(all_embeddings[0], 1)
+        i_g_embeddings = tf.concat(all_embeddings[1], 1)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 1.61:
+        # ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [[weights['user_embedding']], [weights['item_embedding']]]
+        coo = norm_adj.tocoo()
+        coo_indices = np.mat([coo.row, coo.col]).transpose()
+        A_hat_tf = tf.SparseTensor(coo_indices, np.array(coo.data, dtype=np.float32), coo.shape)
+        Zs_prop_user, Zs_prop_item = weights['user_embedding'], weights['item_embedding']
+        # A_hat_tf_user_user = tf.sparse.slice(A_hat_tf, [0, 0], [n_users, n_users])
+        A_hat_tf_user_item = tf.sparse.slice(A_hat_tf, [0, n_users], [n_users, n_items])
+        A_hat_tf_item_user = tf.sparse.slice(A_hat_tf, [n_users, 0], [n_items, n_users])
+        # A_hat_tf_item_item = tf.sparse.slice(A_hat_tf, [n_users, n_users], [n_items, n_items])
+        for _ in range(args.appnp_niter):
+            # A_drop_val_user_user = tf.nn.dropout(A_hat_tf_user_user.values, args.appnp_keepprob)
+            A_drop_val_user_item = tf.nn.dropout(A_hat_tf_user_item.values, args.appnp_keepprob)
+            A_drop_val_item_user = tf.nn.dropout(A_hat_tf_item_user.values, args.appnp_keepprob)
+            # A_drop_val_item_item = tf.nn.dropout(A_hat_tf_item_item.values, args.appnp_keepprob)
+            # A_drop_user_user = tf.SparseTensor(A_hat_tf_user_user.indices, A_drop_val_user_user, A_hat_tf_user_user.dense_shape)
+            A_drop_user_item = tf.SparseTensor(A_hat_tf_user_item.indices, A_drop_val_user_item, A_hat_tf_user_item.dense_shape)
+            A_drop_item_user = tf.SparseTensor(A_hat_tf_item_user.indices, A_drop_val_item_user, A_hat_tf_item_user.dense_shape)
+            # A_drop_item_item = tf.SparseTensor(A_hat_tf_item_item.indices, A_drop_val_item_item, A_hat_tf_item_item.dense_shape)
+            Zs_prop_user = tf.sparse_tensor_dense_matmul(A_drop_user_item, Zs_prop_item) + \
+                            args.appnp_alpha * weights['user_embedding']
+            Zs_prop_item = tf.sparse_tensor_dense_matmul(A_drop_item_user, Zs_prop_user) + \
+                            args.appnp_alpha * weights['item_embedding']
+            all_embeddings[0].append(Zs_prop_user)
+            all_embeddings[1].append(Zs_prop_item)
+        # all_embeddings = tf.concat(all_embeddings, 1)
+        # u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        u_g_embeddings = tf.concat(all_embeddings[0], 1)
+        i_g_embeddings = tf.concat(all_embeddings[1], 1)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 1.62:
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        coo = norm_adj.tocoo()
+        coo_indices = np.mat([coo.row, coo.col]).transpose()
+        A_hat_tf = tf.SparseTensor(coo_indices, np.array(coo.data, dtype=np.float32), coo.shape)
+        A_hat_tf_user = tf.sparse.slice(A_hat_tf, [0, 0], [n_users, n_users + n_items])
+        A_hat_tf_item = tf.sparse.slice(A_hat_tf, [n_users, 0], [n_items, n_users + n_items])
+        Zs_prop = ego_embeddings
+        for _ in range(args.appnp_niter):
+            A_drop_val_user = tf.nn.dropout(A_hat_tf_user.values, args.appnp_keepprob)
+            A_drop_val_item = tf.nn.dropout(A_hat_tf_item.values, args.appnp_keepprob)
+            A_drop_user = tf.SparseTensor(A_hat_tf_user.indices, A_drop_val_user, A_hat_tf_user.dense_shape)
+            A_drop_item = tf.SparseTensor(A_hat_tf_item.indices, A_drop_val_item, A_hat_tf_item.dense_shape)
+            Zs_prop_user = (1 - args.appnp_alpha) * tf.sparse_tensor_dense_matmul(A_drop_user,
+                                                                             Zs_prop) + args.appnp_alpha * weights['user_embedding']
+            Zs_prop_item = (1 - args.appnp_alpha) * tf.sparse_tensor_dense_matmul(A_drop_item,
+                                                                             Zs_prop) + args.appnp_alpha * weights['item_embedding']
+            Zs_prop = tf.concat([Zs_prop_user, Zs_prop_item], axis=0)
+            all_embeddings.append(Zs_prop)
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 1.7:
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        coo = norm_adj.tocoo()
+        coo_indices = np.mat([coo.row, coo.col]).transpose()
+        A_hat_tf = tf.SparseTensor(coo_indices, np.array(coo.data, dtype=np.float32), coo.shape)
+        Zs_prop_user, Zs_prop_item = weights['user_embedding'], weights['item_embedding']
+        for _ in range(args.appnp_niter):
+            A_drop_val = tf.nn.dropout(A_hat_tf.values, args.appnp_keepprob)
+            A_drop = tf.SparseTensor(A_hat_tf.indices, A_drop_val, A_hat_tf.dense_shape)
+            fake_user = appnp_generator(Zs_prop_item, weights, direction='vu')
+            fake_item = appnp_generator(Zs_prop_user, weights, direction='uv')
+            Zs_prop = tf.concat([fake_item, fake_user], axis=0)
+            Zs_prop = (1 - args.appnp_alpha) * tf.sparse_tensor_dense_matmul(A_drop,
+                                                    Zs_prop) + args.appnp_alpha * ego_embeddings
+            all_embeddings.append(Zs_prop)
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 1.8:
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        coo = norm_adj.tocoo()
+        coo_indices = np.mat([coo.row, coo.col]).transpose()
+        A_hat_tf = tf.SparseTensor(coo_indices, np.array(coo.data, dtype=np.float32), coo.shape)
+        Zs_prop = ego_embeddings
+        for _ in range(args.appnp_niter):
+            A_drop_val = tf.nn.dropout(A_hat_tf.values, args.appnp_keepprob)
+            A_drop = tf.SparseTensor(A_hat_tf.indices, A_drop_val, A_hat_tf.dense_shape)
+            Zs_prop = appnp_generator_all(Zs_prop, weights)
+            Zs_prop = (1 - args.appnp_alpha) * tf.sparse_tensor_dense_matmul(A_drop,
+                                                                             Zs_prop) + args.appnp_alpha * ego_embeddings
+            all_embeddings.append(Zs_prop)
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
+    return None, None
+
+def appnp_generator(inp, weights, direction='uv', activation=None):
+    hidden = inp
+    for k in range(args.n_layers_generator):
+        gw = weights['gW_uv_%d' % k] if direction == 'uv' else weights['gW_vu_%d' % k]
+        gb = weights['gb_uv_%d' % k] if direction == 'vu' else weights['gb_vu_%d' % k]
+        hidden = tf.matmul(hidden, gw) + gb
+        if activation is not None:
+            hidden = activation(hidden)
+    return hidden
+
+def appnp_generator_all(inp, weight, activation=None):
+    hidden = inp
+    for k in range(args.n_layers_generator):
+        hidden = tf.matmul(hidden, weight['gW_%d' % k]) + weight['gb_%d' % k]
+        if activation is not None:
+            hidden = activation(hidden)
+    return hidden
+
+def appnp_discriminator(inp, weights, domain='u', activation=tf.nn.relu):
+    hidden = inp
+    for k in range(args.n_layers_generator):
+        act = tf.nn.sigmoid if k == args.n_layers_discriminator - 1 else activation
+        gw = weights['dW_uv_%d' % k] if domain == 'u' else weights['dW_vu_%d' % k]
+        gb = weights['db_uv_%d' % k] if domain == 'v' else weights['db_vu_%d' % k]
+        hidden = act(tf.matmul(hidden, gw) + gb)
+    return hidden
+
+# version 2.0
+def _create_appnpuv_embed(config, weights, n_users, n_items, keep_prob=0.5):
+    if args.sub_version == 2.0:
+        adj_uv, adj_vu = config['adj_uv'], config['adj_vu']
+        all_embeddings = [[weights['user_embedding']], [weights['item_embedding']]]
+        coo_uv, coo_vu = adj_uv.tocoo(), adj_vu.tocoo()
+        coo_indices_uu = np.mat([coo_uv.row, coo_uv.col]).transpose()
+        coo_indices_vv = np.mat([coo_vu.row, coo_vu.col]).transpose()
+        A_hat_uv = tf.SparseTensor(coo_indices_uu, np.array(coo_uv.data, dtype=np.float32), coo_uv.shape)
+        A_hat_vu = tf.SparseTensor(coo_indices_vv, np.array(coo_vu.data, dtype=np.float32), coo_vu.shape)
+        Zs_prop_user, Zs_prop_item = weights['user_embedding'], weights['item_embedding']
+        for _ in range(args.appnp_niter):
+            A_drop_val_uv = tf.nn.dropout(A_hat_uv.values, keep_prob)
+            A_drop_val_vu = tf.nn.dropout(A_hat_vu.values, keep_prob)
+            A_drop_uv = tf.SparseTensor(A_hat_uv.indices, A_drop_val_uv, A_hat_uv.dense_shape)
+            A_drop_vu = tf.SparseTensor(A_hat_vu.indices, A_drop_val_vu, A_hat_vu.dense_shape)
+            Zs_prop_user = (1 - args.appnp_alpha) * tf.sparse_tensor_dense_matmul(A_drop_uv, Zs_prop_item) + \
+                    args.appnp_alpha * weights['user_embedding']
+            Zs_prop_item = (1 - args.appnp_alpha) * tf.sparse_tensor_dense_matmul(A_drop_vu, Zs_prop_user) + \
+                    args.appnp_alpha * weights['item_embedding']
+            all_embeddings[0].append(Zs_prop_user)
+            all_embeddings[1].append(Zs_prop_item)
+        u_g_embeddings = tf.concat(all_embeddings[0], 1)
+        i_g_embeddings = tf.concat(all_embeddings[1], 1)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 2.1: # add two mapping functions
+        adj_uv, adj_vu = config['adj_uv'], config['adj_vu']
+        all_embeddings = [[weights['user_embedding']], [weights['item_embedding']]]
+        coo_uv, coo_vu = adj_uv.tocoo(), adj_vu.tocoo()
+        coo_indices_uu = np.mat([coo_uv.row, coo_uv.col]).transpose()
+        coo_indices_vv = np.mat([coo_vu.row, coo_vu.col]).transpose()
+        A_hat_uv = tf.SparseTensor(coo_indices_uu, np.array(coo_uv.data, dtype=np.float32), coo_uv.shape)
+        A_hat_vu = tf.SparseTensor(coo_indices_vv, np.array(coo_vu.data, dtype=np.float32), coo_vu.shape)
+        Zs_prop_user, Zs_prop_item = weights['user_embedding'], weights['item_embedding']
+        for _ in range(args.appnp_niter):
+            A_drop_val_uv = tf.nn.dropout(A_hat_uv.values, keep_prob)
+            A_drop_val_vu = tf.nn.dropout(A_hat_vu.values, keep_prob)
+            A_drop_uv = tf.SparseTensor(A_hat_uv.indices, A_drop_val_uv, A_hat_uv.dense_shape)
+            A_drop_vu = tf.SparseTensor(A_hat_vu.indices, A_drop_val_vu, A_hat_vu.dense_shape)
+            fake_user = appnp_generator(Zs_prop_item, weights, direction='vu')
+            fake_item = appnp_generator(Zs_prop_user, weights, direction='uv')
+            Zs_prop_user = (1 - args.appnp_alpha) * tf.sparse_tensor_dense_matmul(A_drop_uv, fake_user) + \
+                    args.appnp_alpha * weights['user_embedding']
+            Zs_prop_item = (1 - args.appnp_alpha) * tf.sparse_tensor_dense_matmul(A_drop_vu, fake_item) + \
+                    args.appnp_alpha * weights['item_embedding']
+            all_embeddings[0].append(Zs_prop_user)
+            all_embeddings[1].append(Zs_prop_item)
+        u_g_embeddings = tf.concat(all_embeddings[0], 1)
+        i_g_embeddings = tf.concat(all_embeddings[1], 1)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 2.2: # add two mapping functions
+        adj_uv, adj_vu = config['adj_uv'], config['adj_vu']
+        all_embeddings = [[weights['user_embedding']], [weights['item_embedding']]]
+        coo_uv, coo_vu = adj_uv.tocoo(), adj_vu.tocoo()
+        coo_indices_uu = np.mat([coo_uv.row, coo_uv.col]).transpose()
+        coo_indices_vv = np.mat([coo_vu.row, coo_vu.col]).transpose()
+        A_hat_uv = tf.SparseTensor(coo_indices_uu, np.array(coo_uv.data, dtype=np.float32), coo_uv.shape)
+        A_hat_vu = tf.SparseTensor(coo_indices_vv, np.array(coo_vu.data, dtype=np.float32), coo_vu.shape)
+        Zs_prop_user = appnp_generator(weights['user_embedding'], weights, direction='vu')
+        Zs_prop_item = appnp_generator(weights['item_embedding'], weights, direction='uv')
+        for _ in range(args.appnp_niter):
+            A_drop_val_uv = tf.nn.dropout(A_hat_uv.values, keep_prob)
+            A_drop_val_vu = tf.nn.dropout(A_hat_vu.values, keep_prob)
+            A_drop_uv = tf.SparseTensor(A_hat_uv.indices, A_drop_val_uv, A_hat_uv.dense_shape)
+            A_drop_vu = tf.SparseTensor(A_hat_vu.indices, A_drop_val_vu, A_hat_vu.dense_shape)
+            Zs_prop_user = (1 - args.appnp_alpha) * tf.sparse_tensor_dense_matmul(A_drop_uv, Zs_prop_item) + \
+                    args.appnp_alpha * weights['user_embedding']
+            Zs_prop_item = (1 - args.appnp_alpha) * tf.sparse_tensor_dense_matmul(A_drop_vu, Zs_prop_user) + \
+                    args.appnp_alpha * weights['item_embedding']
+            all_embeddings[0].append(Zs_prop_user)
+            all_embeddings[1].append(Zs_prop_item)
+        u_g_embeddings = tf.concat(all_embeddings[0], 1)
+        i_g_embeddings = tf.concat(all_embeddings[1], 1)
+        return u_g_embeddings, i_g_embeddings
+    return None, None
+
+
+def _create_appnpcgan_embed(config, weights, n_users, n_items, keep_prob=0.5):
+    if args.sub_version == 3.0:
+        adj_uv, adj_vu = config['adj_uv'], config['adj_vu']
+        all_embeddings = [[weights['user_embedding']], [weights['item_embedding']]]
+        coo_uv, coo_vu = adj_uv.tocoo(), adj_vu.tocoo()
+        coo_indices_uu = np.mat([coo_uv.row, coo_uv.col]).transpose()
+        coo_indices_vv = np.mat([coo_vu.row, coo_vu.col]).transpose()
+        A_hat_uv = tf.SparseTensor(coo_indices_uu, np.array(coo_uv.data, dtype=np.float32), coo_uv.shape)
+        A_hat_vu = tf.SparseTensor(coo_indices_vv, np.array(coo_vu.data, dtype=np.float32), coo_vu.shape)
+        Zs_prop_user, Zs_prop_item = weights['user_embedding'], weights['item_embedding']
+        hiddens = []
+        for _ in range(args.appnp_niter):
+            A_drop_val_uv = tf.nn.dropout(A_hat_uv.values, keep_prob)
+            A_drop_val_vu = tf.nn.dropout(A_hat_vu.values, keep_prob)
+            A_drop_uv = tf.SparseTensor(A_hat_uv.indices, A_drop_val_uv, A_hat_uv.dense_shape)
+            A_drop_vu = tf.SparseTensor(A_hat_vu.indices, A_drop_val_vu, A_hat_vu.dense_shape)
+            fake_user = appnp_generator(Zs_prop_item, weights, direction='vu')
+            fake_item = appnp_generator(Zs_prop_user, weights, direction='uv')
+            hiddens.append([Zs_prop_user, Zs_prop_item, fake_user, fake_item])
+            Zs_prop_user = (1 - args.appnp_alpha) * tf.sparse_tensor_dense_matmul(A_drop_uv, fake_user) + \
+                    args.appnp_alpha * weights['user_embedding']
+            Zs_prop_item = (1 - args.appnp_alpha) * tf.sparse_tensor_dense_matmul(A_drop_vu, fake_item) + \
+                    args.appnp_alpha * weights['item_embedding']
+            all_embeddings[0].append(Zs_prop_user)
+            all_embeddings[1].append(Zs_prop_item)
+        u_g_embeddings = tf.concat(all_embeddings[0], 1)
+        i_g_embeddings = tf.concat(all_embeddings[1], 1)
+        return u_g_embeddings, i_g_embeddings, hiddens
+    return None, None, []
 
 
 def _create_bpr_loss(users, pos_items, neg_items, decay):
@@ -225,10 +651,40 @@ def _create_bpr_loss(users, pos_items, neg_items, decay):
 
     return mf_loss, emb_loss, reg_loss
 
+def _create_cycle_gan_loss(users, pos_items, neg_items, hiddnes, all_weights):
+    gan_loss, cycle_loss = None, None
+    for rusers, ritems, fusers, fitems in hiddnes:
+        real_users = tf.nn.embedding_lookup(rusers, users)
+        real_poses = tf.nn.embedding_lookup(ritems, pos_items)
+        real_negs = tf.nn.embedding_lookup(ritems, neg_items)
+        fake_pos_users = tf.nn.embedding_lookup(fusers, pos_items)
+        fake_neg_users = tf.nn.embedding_lookup(fusers, neg_items)
+        fake_items = tf.nn.embedding_lookup(fitems, users)
+
+        real_loss = tf.reduce_mean(tf.squared_difference(appnp_discriminator(real_users, all_weights, domain='u'), 0.9)) \
+                    + tf.reduce_mean(tf.squared_difference(appnp_discriminator(real_poses, all_weights, domain='v'), 0.9)) \
+                    + tf.reduce_mean(tf.squared_difference(appnp_discriminator(real_negs, all_weights, domain='v'), 0.9))
+        fake_loss = tf.reduce_mean(tf.square(appnp_discriminator(fake_pos_users, all_weights, domain='u'))) \
+                    + tf.reduce_mean(tf.square(appnp_discriminator(fake_neg_users, all_weights, domain='u'))) \
+                    + tf.reduce_mean(tf.square(appnp_discriminator(fake_items, all_weights, domain='v')))
+        if gan_loss is None:
+            gan_loss = (real_loss + fake_loss) / 2
+        else:
+            gan_loss += (real_loss + fake_loss) / 2
+
+        cycle_users_loss = tf.reduce_mean(tf.abs(appnp_generator(fake_items, all_weights, direction='vu') - real_users))
+        cycle_poses_loss = tf.reduce_mean(tf.abs(appnp_generator(fake_pos_users, all_weights, direction='uv') - real_poses))
+        cycle_negs_loss = tf.reduce_mean(tf.abs(appnp_generator(fake_neg_users, all_weights, direction='uv') - real_negs))
+        if cycle_loss is None:
+            cycle_loss = cycle_users_loss + cycle_poses_loss + cycle_negs_loss
+        else:
+            cycle_loss += cycle_users_loss + cycle_poses_loss + cycle_negs_loss
+    return gan_loss, cycle_loss
+
 def build_model(data_config, pretrain_data):
     n_users = data_config['n_users']
     n_items = data_config['n_items']
-    n_fold = 100
+    n_fold = 10
     norm_adj = data_config['norm_adj']
     # n_nonzero_elems = norm_adj.count_nonzero()
     n_layers = len(eval(args.layer_size))
@@ -249,6 +705,12 @@ def build_model(data_config, pretrain_data):
                                                           node_dropout, n_layers, n_fold, n_users, n_items)
     elif args.alg_type in ['appnp']:
         ua_embeddings, ia_embeddings = _create_appnp_embed(norm_adj, weights, n_users, n_items)
+    elif args.alg_type in ['appnpuv']:
+        ua_embeddings, ia_embeddings = _create_appnpuv_embed(data_config, weights,
+                                                          n_users, n_items)
+    elif args.alg_type in ['appnpcgan']:
+        ua_embeddings, ia_embeddings, hiddens = _create_appnpcgan_embed(data_config, weights,
+                                                          n_users, n_items)
     else:
         raise NotImplementedError("alg_type %s not supported!" % args.alg_type)
 
@@ -258,7 +720,11 @@ def build_model(data_config, pretrain_data):
     batch_ratings = tf.matmul(u_g_embeddings, pos_i_g_embeddings, transpose_a=False, transpose_b=True)
 
     mf_loss, emb_loss, reg_loss = _create_bpr_loss(u_g_embeddings, pos_i_g_embeddings, neg_i_g_embeddings, decay)
-    loss = mf_loss + emb_loss + reg_loss
+    if args.alg_type == 'appnpcgan':
+        gan_loss, cycle_loss = _create_cycle_gan_loss(users, pos_items, neg_items, hiddens, weights)
+        loss = mf_loss + emb_loss + reg_loss + 1e-3 * (gan_loss + 10 * cycle_loss)
+    else:
+        loss = mf_loss + emb_loss + reg_loss
     return [users, pos_items, neg_items, node_dropout, mess_dropout], batch_ratings, [loss, mf_loss, emb_loss, reg_loss]
 
 def load_pretrained_data():
@@ -283,6 +749,13 @@ if __name__ == '__main__':
         norm_adj = data_generator.get_appnp_mat()
         config['norm_adj'] = norm_adj
         print('use the appnp normed adjacency matrix')
+    elif args.adj_type == 'appnpuv' or args.adj_type == 'appnpcgan':
+        # adj_user, adj_item, adj_uu, adj_vv = data_generator.get_split_adj_mat()
+        norm_adj = data_generator.get_appnp_mat()
+        norm_uv, norm_vu = data_generator.get_appnp_split_mat(norm_adj)
+        config['adj_uv'] = norm_uv
+        config['adj_vu'] = norm_vu
+        config['norm_adj'] = norm_adj
     else:
         plain_adj, norm_adj, mean_adj = data_generator.get_adj_mat()
         if args.adj_type == 'plain':
@@ -394,7 +867,7 @@ if __name__ == '__main__':
             sys.exit()
 
         # print the test evaluation metrics each 10 epochs; pos:neg = 1:10.
-        if (epoch + 1) % 10 != 0:
+        if (epoch + 1) % 10 != 0 or epoch < 100:
             if args.verbose > 0 and epoch % args.verbose == 0:
                 perf_str = 'Epoch %d [%.1fs]: train==[%.5f=%.5f + %.5f]' % (
                     epoch, time() - t1, loss, mf_loss, reg_loss)
