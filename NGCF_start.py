@@ -364,7 +364,7 @@ def _create_bige_embed(config, weights, mess_dropout, node_dropout, n_layers, n_
         u_g_embeddings = tf.concat(all_embeddings_user, 1)
         i_g_embeddings = tf.concat(all_embeddings_item, 1)
         return u_g_embeddings, i_g_embeddings
-    return None, None, None
+    return None, None
 
 def _create_bpr_loss(users, pos_items, neg_items, decay):
     pos_scores = tf.reduce_sum(tf.multiply(users, pos_items), axis=1)
