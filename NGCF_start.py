@@ -412,7 +412,7 @@ def build_model(data_config, pretrain_data):
     if args.alg_type in ['ngcf']:
         ua_embeddings, ia_embeddings = _create_ngcf_embed(norm_adj, weights, mess_dropout,
                                                           node_dropout, n_layers, n_fold, n_users, n_items)
-    if args.alg_type in ['bige']:
+    elif args.alg_type in ['bige']:
         ua_embeddings, ia_embeddings = _create_bige_embed(config, weights, mess_dropout,
                                                           node_dropout, n_layers, n_fold, n_users, n_items)
     else:
