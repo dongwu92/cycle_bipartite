@@ -286,7 +286,7 @@ class NGCF(object):
                 else:
                     ret = ret + seq
 
-            return activation(ret)  # activation
+            return tf.squeeze(activation(ret))  # activation
 
     def _sp_gat_inference(self, inputs, attn_drop, ffd_drop,
             n_heads, activation=tf.nn.elu, residual=False):
@@ -518,6 +518,7 @@ if __name__ == '__main__':
     loss_loger, pre_loger, rec_loger, ndcg_loger, hit_loger = [], [], [], [], []
     stopping_step = 0
     should_stop = False
+    placeholders = [model.users, model.pos_items, model.neg_items, model.node_dropout, model.mess_dropout]
 
     for epoch in range(args.epoch):
         t1 = time()
@@ -542,7 +543,7 @@ if __name__ == '__main__':
             sys.exit()
 
         # print the test evaluation metrics each 10 epochs; pos:neg = 1:10.
-        if (epoch + 1) % 10 != 0 or epoch < 100:
+        if (epoch + 1) % 10 != 0:# or epoch < 100:
             if args.verbose > 0 and epoch % args.verbose == 0:
                 perf_str = 'Epoch %d [%.1fs]: train==[%.5f=%.5f + %.5f]' % (
                     epoch, time() - t1, loss, mf_loss, reg_loss)
@@ -551,7 +552,8 @@ if __name__ == '__main__':
 
         t2 = time()
         users_to_test = list(data_generator.test_set.keys())
-        ret = test(sess, model, users_to_test, drop_flag=True)
+        # ret = test(sess, model, users_to_test, drop_flag=True)
+        ret = test(sess, placeholders, model.batch_ratings, users_to_test, drop_flag=True)
 
         t3 = time()
 
