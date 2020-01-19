@@ -376,18 +376,8 @@ if __name__ == '__main__':
     config['n_items'] = data_generator.n_items
 
     if args.alg_type == 'gat':
+        plain_adj, norm_adj, mean_adj = data_generator.get_adj_mat()
         config['norm_adj'] = plain_adj
-    elif args.adj_type == 'appnp':
-        norm_adj = data_generator.get_appnp_mat()
-        config['norm_adj'] = norm_adj
-        print('use the appnp normed adjacency matrix')
-    elif args.adj_type == 'appnpuv' or args.adj_type == 'appnpcgan':
-        # adj_user, adj_item, adj_uu, adj_vv = data_generator.get_split_adj_mat()
-        norm_adj = data_generator.get_appnp_mat()
-        norm_uv, norm_vu = data_generator.get_appnp_split_mat(norm_adj)
-        config['adj_uv'] = norm_uv
-        config['adj_vu'] = norm_vu
-        config['norm_adj'] = norm_adj
     else:
         plain_adj, norm_adj, mean_adj = data_generator.get_adj_mat()
         if args.adj_type == 'plain':
