@@ -133,7 +133,7 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
         ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
         all_embeddings = [ego_embeddings]
         for k in range(0, n_layers):
-            side_embeddings = tf.sparse_tensor_dense_matmul(A_hat, ego_embeddings)
+            side_embeddings = tf.sparse_tensor_dense_matmul(A_fold_hat, ego_embeddings)
             sum_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % k]) + weights['b_gc_%d' % k]
             bi_embeddings = tf.multiply(ego_embeddings, side_embeddings)
             bi_embeddings = tf.matmul(bi_embeddings, weights['W_bi_%d' % k]) + weights['b_bi_%d' % k]
@@ -154,7 +154,7 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
         ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
         all_embeddings = [ego_embeddings]
         for k in range(0, n_layers):
-            side_embeddings = tf.sparse_tensor_dense_matmul(A_hat, ego_embeddings)
+            side_embeddings = tf.sparse_tensor_dense_matmul(A_fold_hat, ego_embeddings)
             sum_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % k]) + weights['b_gc_%d' % k]
             # bi_embeddings = tf.multiply(ego_embeddings, side_embeddings)
             # bi_embeddings = tf.matmul(bi_embeddings, weights['W_bi_%d' % k]) + weights['b_bi_%d' % k]
@@ -175,7 +175,7 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
         ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
         all_embeddings = [ego_embeddings]
         for k in range(0, n_layers):
-            side_embeddings = tf.sparse_tensor_dense_matmul(A_hat, ego_embeddings)
+            side_embeddings = tf.sparse_tensor_dense_matmul(A_fold_hat, ego_embeddings)
             sum_embeddings = tf.matmul(side_embeddings, weights['W_gc_0']) + weights['b_gc_0']
             # bi_embeddings = tf.multiply(ego_embeddings, side_embeddings)
             # bi_embeddings = tf.matmul(bi_embeddings, weights['W_bi_%d' % k]) + weights['b_bi_%d' % k]
@@ -196,7 +196,7 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
         ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
         all_embeddings = [ego_embeddings]
         for k in range(0, n_layers):
-            side_embeddings = tf.sparse_tensor_dense_matmul(A_hat, ego_embeddings)
+            side_embeddings = tf.sparse_tensor_dense_matmul(A_fold_hat, ego_embeddings)
             # sum_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % k]) + weights['b_gc_%d' % k]
             bi_embeddings = tf.multiply(ego_embeddings, side_embeddings)
             bi_embeddings = tf.matmul(bi_embeddings, weights['W_bi_%d' % k]) + weights['b_bi_%d' % k]
@@ -217,7 +217,7 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
         ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
         all_embeddings = [ego_embeddings]
         for k in range(0, n_layers):
-            side_embeddings = tf.sparse_tensor_dense_matmul(A_hat, ego_embeddings)
+            side_embeddings = tf.sparse_tensor_dense_matmul(A_fold_hat, ego_embeddings)
             # sum_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % k]) + weights['b_gc_%d' % k]
             bi_embeddings = tf.multiply(ego_embeddings, side_embeddings)
             bi_embeddings = tf.matmul(bi_embeddings, weights['W_bi_0']) + weights['b_bi_0']
