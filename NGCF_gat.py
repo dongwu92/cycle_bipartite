@@ -229,7 +229,7 @@ class NGCF(object):
         indices = np.vstack((adj.col, adj.row)).transpose()  # This is where I made a mistake, I used (adj.row, adj.col) instead
         return tf.SparseTensor(indices=indices, values=adj.data, dense_shape=adj.shape)
 
-    def _sp_attn_head(self, seq, adj_mat, activation, in_drop=0.0, coef_drop=0.0, residual=False):
+    def _sp_attn_head(self, seq, adj_mat, activation, out_sz, in_drop=0.0, coef_drop=0.0, residual=False):
         '''
             seq: [1, 2708, 1433]
             seq_fts: [1, 2708, 8]
@@ -239,7 +239,6 @@ class NGCF(object):
             f_2: [2708, 1]
         '''
         nb_nodes = self.n_users + self.n_items
-        out_sz = self.emb_dim
         with tf.name_scope('sp_attn'):
             if in_drop != 0.0:
                 seq = tf.nn.dropout(seq, 1.0 - in_drop)
@@ -297,7 +296,7 @@ class NGCF(object):
         attns = []
         for _ in range(n_heads[0]):
             attns.append(self._sp_attn_head(inputs, adj_mat=adj_mat,
-                activation=activation, in_drop=ffd_drop, 
+                activation=activation, out_sz=self.weight_size[0], in_drop=ffd_drop, 
                 coef_drop=attn_drop, residual=False))
         h_1 = tf.concat(attns, axis=-1)
         all_embeddings = [h_1]
@@ -305,7 +304,7 @@ class NGCF(object):
             attns = []
             for _ in range(n_heads[i]):
                 attns.append(self._sp_attn_head(h_1, adj_mat=adj_mat,
-                    activation=activation, in_drop=ffd_drop, 
+                    activation=activation, out_sz=self.weight_size[i], in_drop=ffd_drop, 
                     coef_drop=attn_drop, residual=residual))
             h_1 = tf.concat(attns, axis=-1)
             all_embeddings.append(h_1)
@@ -382,7 +381,7 @@ def load_pretrained_data():
 
 
 if __name__ == '__main__':
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_id)
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_ids)
 
     config = dict()
     config['n_users'] = data_generator.n_users
