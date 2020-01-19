@@ -375,7 +375,9 @@ if __name__ == '__main__':
     config['n_users'] = data_generator.n_users
     config['n_items'] = data_generator.n_items
 
-    if args.adj_type == 'appnp':
+    if args.alg_type == 'gat':
+        config['norm_adj'] = plain_adj
+    elif args.adj_type == 'appnp':
         norm_adj = data_generator.get_appnp_mat()
         config['norm_adj'] = norm_adj
         print('use the appnp normed adjacency matrix')
