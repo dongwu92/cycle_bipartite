@@ -106,8 +106,7 @@ class Data(object):
         try:
             t1 = time()
             norm_adj_mat = sp.load_npz(self.path + '/appnp_norm_adj_mat.npz')
-            print('already load adj matrix', adj_mat.shape, time() - t1)
-
+            print('already load adj matrix', norm_adj_mat.shape, time() - t1)
         except Exception:
             norm_adj_mat = self.create_appnp_mat()
             sp.save_npz(self.path + '/appnp_norm_adj_mat.npz', norm_adj_mat)
@@ -124,12 +123,33 @@ class Data(object):
         adj_mat = adj_mat.todok()
         print('already create adjacency matrix', adj_mat.shape, time() - t1)
 
-        A = adj_mat + sp.eye(adj_mat.shape[0])
+        # A = adj_mat + sp.eye(adj_mat.shape[0])
+        A = adj_mat
         D_vec = np.sum(A, axis=1).A1
         D_vec_invsqrt_corr = 1 / np.sqrt(D_vec)
         D_invsqrt_corr = sp.diags(D_vec_invsqrt_corr)
         return D_invsqrt_corr @ A @ D_invsqrt_corr
 
+    def get_appnp_split_mat(self, norm_adj):
+        try:
+            t1 = time()
+            norm_adj_uv = sp.load_npz(self.path + '/appnp_norm_adj_uv.npz')
+            norm_adj_vu = sp.load_npz(self.path + '/appnp_norm_adj_vu.npz')
+            print('already load adj matrix', time() - t1)
+        except Exception:
+            norm_adj_uv, norm_adj_vu = self.create_appnp_split_mat(norm_adj)
+            sp.save_npz(self.path + '/appnp_norm_adj_uv.npz', norm_adj_uv)
+            sp.save_npz(self.path + '/appnp_norm_adj_vu.npz', norm_adj_vu)
+        return norm_adj_uv, norm_adj_vu
+
+    def create_appnp_split_mat(self, norm_adj):
+        t1 = time()
+        adj_dense = norm_adj.tolil()
+        adj_uv = adj_dense[:self.n_users, self.n_users:]
+        adj_vu = adj_dense[self.n_users:, :self.n_users]
+        adj_uv = adj_uv.tocsr()
+        adj_vu = adj_vu.tocsr()
+        return  adj_uv, adj_vu
 
     def get_adj_mat(self):
         try:
@@ -150,16 +170,16 @@ class Data(object):
         try:
             adj_user_mat = sp.load_npz(self.path + '/s_adj_user_mat.npz')
             adj_item_mat = sp.load_npz(self.path + '/s_adj_item_mat.npz')
-            # adj_uu_mat = sp.load_npz(self.path + '/s_adj_uu_mat.npz')
-            # adj_ii_mat = sp.load_npz(self.path + '/s_adj_ii_mat.npz')
+            adj_uu_mat = sp.load_npz(self.path + '/s_adj_uu_mat.npz')
+            adj_ii_mat = sp.load_npz(self.path + '/s_adj_ii_mat.npz')
         except Exception:
-            adj_user_mat, adj_item_mat = self.create_split_adj_mat()
-            # adj_user_mat, adj_item_mat, adj_uu_mat, adj_ii_mat = self.create_split_adj_mat()
+            # adj_user_mat, adj_item_mat = self.create_split_adj_mat()
+            adj_user_mat, adj_item_mat, adj_uu_mat, adj_ii_mat = self.create_split_adj_mat()
             sp.save_npz(self.path + '/s_adj_user_mat.npz', adj_user_mat)
             sp.save_npz(self.path + '/s_adj_item_mat.npz', adj_item_mat)
-            # sp.save_npz(self.path + '/s_adj_uu_mat.npz', adj_uu_mat)
-            # sp.save_npz(self.path + '/s_adj_ii_mat.npz', adj_ii_mat)
-        return adj_user_mat, adj_item_mat #, adj_uu_mat, adj_ii_mat
+            sp.save_npz(self.path + '/s_adj_uu_mat.npz', adj_uu_mat)
+            sp.save_npz(self.path + '/s_adj_ii_mat.npz', adj_ii_mat)
+        return adj_user_mat, adj_item_mat, adj_uu_mat, adj_ii_mat
 
     def create_split_adj_mat(self):
         adj_user_mat = sp.dok_matrix((self.n_users, self.n_items), dtype=np.float32)
@@ -186,9 +206,9 @@ class Data(object):
 
         adj_user_mat = normalized_adj_single(adj_user_mat)
         adj_item_mat = normalized_adj_single(adj_item_mat)
-        # adj_uu_mat = adj_user_mat.dot(adj_item_mat)
-        # adj_ii_mat = adj_item_mat.dot(adj_user_mat)
-        return adj_user_mat.tocsr(), adj_item_mat.tocsr()#, adj_uu_mat.tocsr(), adj_ii_mat.tocsr()
+        adj_uu_mat = adj_user_mat.dot(adj_item_mat)
+        adj_ii_mat = adj_item_mat.dot(adj_user_mat)
+        return adj_user_mat.tocsr(), adj_item_mat.tocsr(), adj_uu_mat.tocsr(), adj_ii_mat.tocsr()
 
     def create_adj_mat(self):
         t1 = time()
