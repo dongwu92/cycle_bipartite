@@ -472,11 +472,8 @@ if __name__ == '__main__':
                 ret = test(sess, model, users_to_test, drop_flag=True)
                 cur_best_pre_0 = ret['recall'][0]
 
-                pretrain_ret = 'pretrained model recall=[%.5f, %.5f], precision=[%.5f, %.5f], hit=[%.5f, %.5f],' \
-                               'ndcg=[%.5f, %.5f]' % \
+                pretrain_ret = 'pretrained model recall=[%.5f, %.5f], ndcg=[%.5f, %.5f]' % \
                                (ret['recall'][0], ret['recall'][-1],
-                                ret['precision'][0], ret['precision'][-1],
-                                ret['hit_ratio'][0], ret['hit_ratio'][-1],
                                 ret['ndcg'][0], ret['ndcg'][-1])
                 print(pretrain_ret)
         else:
@@ -509,10 +506,8 @@ if __name__ == '__main__':
         for i, users_to_test in enumerate(users_to_test_list):
             ret = test(sess, model, users_to_test, drop_flag=True)
 
-            final_perf = "recall=[%s], precision=[%s], hit=[%s], ndcg=[%s]" % \
+            final_perf = "recall=[%s], ndcg=[%s]" % \
                          ('\t'.join(['%.5f' % r for r in ret['recall']]),
-                          '\t'.join(['%.5f' % r for r in ret['precision']]),
-                          '\t'.join(['%.5f' % r for r in ret['hit_ratio']]),
                           '\t'.join(['%.5f' % r for r in ret['ndcg']]))
             print(final_perf)
 
@@ -568,15 +563,14 @@ if __name__ == '__main__':
 
         loss_loger.append(loss)
         rec_loger.append(ret['recall'])
-        pre_loger.append(ret['precision'])
-        ndcg_loger.append(ret['ndcg'])
+        # pre_loger.append(ret['precision'])
+        # ndcg_loger.append(ret['ndcg'])
         hit_loger.append(ret['hit_ratio'])
 
         if args.verbose > 0:
             perf_str = 'Epoch %d [%.1fs + %.1fs]: train==[%.5f=%.5f + %.5f + %.5f], recall=[%.5f, %.5f], ' \
-                       'precision=[%.5f, %.5f], hit=[%.5f, %.5f], ndcg=[%.5f, %.5f]' % \
+                       'ndcg=[%.5f, %.5f]' % \
                        (epoch, t2 - t1, t3 - t2, loss, mf_loss, emb_loss, reg_loss, ret['recall'][0], ret['recall'][-1],
-                        ret['precision'][0], ret['precision'][-1], ret['hit_ratio'][0], ret['hit_ratio'][-1],
                         ret['ndcg'][0], ret['ndcg'][-1])
             print(perf_str)
 
