@@ -344,7 +344,7 @@ def build_model(data_config, pretrain_data):
                                                           node_dropout, n_layers, n_fold, n_users, n_items)
     elif args.alg_type in ['gat']:
         ua_embeddings, ia_embeddings = _create_gat_embed(norm_adj, weights, mess_dropout,
-                                                          node_dropout, n_layers, n_users, n_items, weight_size, args.emb_size)
+                                                          node_dropout, n_layers, n_users, n_items, weight_size, args.embed_size)
     else:
         raise NotImplementedError("alg_type %s not supported!" % args.alg_type)
 
