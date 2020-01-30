@@ -55,6 +55,11 @@ def _init_weights(pretrain_data, n_users, n_items, n_layers):
                 all_weights['gW_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]),
                                                           name='gW_%d' % k)
                 all_weights['gb_%d' % k] = tf.Variable(initializer([args.embed_size]), name='gb_%d' % k)
+        elif args.sub_version == 1.9:
+            for k in range(args.n_head):
+                all_weights['gW_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]),
+                                                          name='gW_%d' % k)
+                all_weights['gb_%d' % k] = tf.Variable(initializer([args.embed_size]), name='gb_%d' % k)
     elif args.alg_type == 'appnpuv' or args.alg_type == 'appnpcgan':
         for k in range(args.n_layers_generator):
             all_weights['gW_uv_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]), name='gW_uv_%d' % k)
@@ -488,6 +493,24 @@ def _create_appnp_embed(norm_adj, weights, n_users, n_items):
             Zs_prop = (1 - args.appnp_alpha) * tf.sparse_tensor_dense_matmul(A_drop,
                                                                              Zs_prop) + args.appnp_alpha * ego_embeddings
             all_embeddings.append(Zs_prop)
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 1.9:
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        coo = norm_adj.tocoo()
+        coo_indices = np.mat([coo.row, coo.col]).transpose()
+        A_hat_tf = tf.SparseTensor(coo_indices, np.array(coo.data, dtype=np.float32), coo.shape)
+        Zs_prop = ego_embeddings
+        for _ in range(args.appnp_niter):
+            A_drop_val = tf.nn.dropout(A_hat_tf.values, args.appnp_keepprob)
+            A_drop = tf.SparseTensor(A_hat_tf.indices, A_drop_val, A_hat_tf.dense_shape)
+            tmp_prop = (1 - args.appnp_alpha) * tf.sparse_tensor_dense_matmul(A_drop,
+                                                                             Zs_prop) + args.appnp_alpha * ego_embeddings
+            for j in range(args.n_head):
+                Zs_prop = tf.matmul(tmp_prop, weights['gW_%d' % j]) + weights['gb_%d' % j]
+                all_embeddings.append(Zs_prop)
         all_embeddings = tf.concat(all_embeddings, 1)
         u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
         return u_g_embeddings, i_g_embeddings

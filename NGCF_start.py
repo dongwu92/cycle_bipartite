@@ -24,7 +24,7 @@ def _init_weights(pretrain_data, n_users, n_items, n_layers):
         print('using pretrained initialization')
 
     if args.alg_type == 'ngcf':
-        if args.sub_version == 1.22:
+        if args.sub_version >= 1.22 and args.sub_version < 1.23:
             for k in range(args.n_head):
                 all_weights['W_gc_%d' % k] = tf.Variable(
                     initializer([args.embed_size, args.embed_size]), name='W_gc_%d' % k)
@@ -47,6 +47,21 @@ def _init_weights(pretrain_data, n_users, n_items, n_layers):
                     initializer([weight_size_list[k], weight_size_list[k + 1]]), name='W_bi_%d' % k)
                 all_weights['b_bi_%d' % k] = tf.Variable(
                     initializer([1, weight_size_list[k + 1]]), name='b_bi_%d' % k)
+        if args.sub_version >= 1.227 and args.sub_version < 1.23:
+            for k in range(args.n_layers_generator):
+                all_weights['gW_uv_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]),
+                                                          name='gW_uv_%d' % k)
+                all_weights['gb_uv_%d' % k] = tf.Variable(initializer([args.embed_size]), name='gb_uv_%d' % k)
+                all_weights['gW_vu_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]),
+                                                          name='gW_vu_%d' % k)
+                all_weights['gb_vu_%d' % k] = tf.Variable(initializer([args.embed_size]), name='gb_vu_%d' % k)
+            for k in range(args.n_layers_discriminator):
+                all_weights['dW_uv_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]),
+                                                          name='dW_uv_%d' % k)
+                all_weights['db_uv_%d' % k] = tf.Variable(initializer([args.embed_size]), name='db_uv_%d' % k)
+                all_weights['dW_vu_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]),
+                                                          name='dW_vu_%d' % k)
+                all_weights['db_vu_%d' % k] = tf.Variable(initializer([args.embed_size]), name='db_vu_%d' % k)
     elif args.alg_type == 'bige':
         if args.sub_version == 2.0:
             all_weights['W_u'] = tf.Variable(
@@ -67,6 +82,81 @@ def _init_weights(pretrain_data, n_users, n_items, n_layers):
                     initializer([args.embed_size, args.embed_size]), name='W_v_%d' % k)
                 all_weights['b_v_%d' % k] = tf.Variable(
                     initializer([1, args.embed_size]), name='b_v_%d' % k)
+        elif args.sub_version == 3.0:
+            for k in range(args.n_head):
+                all_weights['W_gc_%d' % k] = tf.Variable(
+                    initializer([args.embed_size, args.embed_size]), name='W_gc_%d' % k)
+                all_weights['b_gc_%d' % k] = tf.Variable(
+                    initializer([1, args.embed_size]), name='b_gc_%d' % k)
+        elif args.sub_version == 3.01:
+            for k in range(args.n_head):
+                all_weights['Wu_%d' % k] = tf.Variable(
+                    initializer([args.embed_size, args.embed_size]), name='Wu_%d' % k)
+                all_weights['bu_%d' % k] = tf.Variable(
+                    initializer([1, args.embed_size]), name='bu_%d' % k)
+                all_weights['Wi_%d' % k] = tf.Variable(
+                    initializer([args.embed_size, args.embed_size]), name='Wi_%d' % k)
+                all_weights['bi_%d' % k] = tf.Variable(
+                    initializer([1, args.embed_size]), name='bi_%d' % k)
+        elif args.sub_version == 3.1 or args.sub_version == 3.11:
+            for k in range(args.n_head):
+                all_weights['Wu_%d' % k] = tf.Variable(
+                    initializer([args.embed_size, args.embed_size]), name='Wu_%d' % k)
+                all_weights['bu_%d' % k] = tf.Variable(
+                    initializer([1, args.embed_size]), name='bu_%d' % k)
+                all_weights['Wi_%d' % k] = tf.Variable(
+                    initializer([args.embed_size, args.embed_size]), name='Wi_%d' % k)
+                all_weights['bi_%d' % k] = tf.Variable(
+                    initializer([1, args.embed_size]), name='bi_%d' % k)
+            for k in range(args.n_layers_generator):
+                all_weights['gW_uv_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]),
+                                                          name='gW_uv_%d' % k)
+                all_weights['gb_uv_%d' % k] = tf.Variable(initializer([args.embed_size]), name='gb_uv_%d' % k)
+                all_weights['gW_vu_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]),
+                                                          name='gW_vu_%d' % k)
+                all_weights['gb_vu_%d' % k] = tf.Variable(initializer([args.embed_size]), name='gb_vu_%d' % k)
+            for k in range(args.n_layers_discriminator):
+                all_weights['dW_uv_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]),
+                                                          name='dW_uv_%d' % k)
+                all_weights['db_uv_%d' % k] = tf.Variable(initializer([args.embed_size]), name='db_uv_%d' % k)
+                all_weights['dW_vu_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]),
+                                                          name='dW_vu_%d' % k)
+                all_weights['db_vu_%d' % k] = tf.Variable(initializer([args.embed_size]), name='db_vu_%d' % k)
+        elif args.sub_version == 3.6:
+            for k in range(args.n_head):
+                all_weights['W_gc_%d' % k] = tf.Variable(
+                    initializer([args.embed_size, args.embed_size]), name='W_gc_%d' % k)
+    elif args.alg_type == 'cgan':
+        for k in range(args.n_head):
+            weight_size_list = [args.embed_size] + eval(args.layer_size)
+            all_weights['W_gc_%d' % k] = tf.Variable(
+                initializer([weight_size_list[k], weight_size_list[k + 1]]), name='W_gc_%d' % k)
+            all_weights['b_gc_%d' % k] = tf.Variable(
+                initializer([1, weight_size_list[k + 1]]), name='b_gc_%d' % k)
+
+            all_weights['W_bi_%d' % k] = tf.Variable(
+                initializer([weight_size_list[k], weight_size_list[k + 1]]), name='W_bi_%d' % k)
+            all_weights['b_bi_%d' % k] = tf.Variable(
+                initializer([1, weight_size_list[k + 1]]), name='b_bi_%d' % k)
+        for k in range(args.n_head):
+            all_weights['Wu_%d' % k] = tf.Variable(
+                initializer([args.embed_size, args.embed_size]), name='Wu_%d' % k)
+            all_weights['bu_%d' % k] = tf.Variable(
+                initializer([1, args.embed_size]), name='bu_%d' % k)
+            all_weights['Wi_%d' % k] = tf.Variable(
+                initializer([args.embed_size, args.embed_size]), name='Wi_%d' % k)
+            all_weights['bi_%d' % k] = tf.Variable(
+                initializer([1, args.embed_size]), name='bi_%d' % k)
+        for k in range(args.n_layers_generator):
+            all_weights['gW_uv_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]), name='gW_uv_%d' % k)
+            all_weights['gb_uv_%d' % k] = tf.Variable(initializer([args.embed_size]), name='gb_uv_%d' % k)
+            all_weights['gW_vu_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]), name='gW_vu_%d' % k)
+            all_weights['gb_vu_%d' % k] = tf.Variable(initializer([args.embed_size]), name='gb_vu_%d' % k)
+        for k in range(args.n_layers_discriminator):
+            all_weights['dW_uv_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]), name='dW_uv_%d' % k)
+            all_weights['db_uv_%d' % k] = tf.Variable(initializer([args.embed_size]), name='db_uv_%d' % k)
+            all_weights['dW_vu_%d' % k] = tf.Variable(initializer([args.embed_size, args.embed_size]), name='dW_vu_%d' % k)
+            all_weights['db_vu_%d' % k] = tf.Variable(initializer([args.embed_size]), name='db_vu_%d' % k)
     return all_weights
 
 def _convert_sp_mat_to_sp_tensor(X):
@@ -393,6 +483,213 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
         all_embeddings = tf.concat(all_embeddings, 1)
         u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
         return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 1.223:
+        # recall=[0.17556	0.24601	0.29704	0.33656	0.36889], ndcg=[0.23959	0.28060	0.30688	0.32617	0.34146]
+        if args.node_dropout_flag:
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        for k in range(0, n_layers):
+            temp_embed = []
+            for f in range(n_fold):
+                temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+            side_embeddings = tf.concat(temp_embed, 0)
+            for j in range(args.n_head):
+                ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % j]) #+ weights['b_gc_%d' % j]
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 1.224:
+        if args.node_dropout_flag:
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [1.5*ego_embeddings]
+        for k in range(0, n_layers):
+            temp_embed = []
+            for f in range(n_fold):
+                temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+            side_embeddings = tf.concat(temp_embed, 0)
+            for j in range(args.n_head):
+                ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % j]) #+ weights['b_gc_%d' % j]
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 1.225:
+        if args.node_dropout_flag:
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        for k in range(0, n_layers):
+            temp_embed = []
+            for f in range(n_fold):
+                temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+            side_embeddings = tf.concat(temp_embed, 0)
+            side_user, side_item = tf.split(side_embeddings, [n_users, n_items], 0)
+            for j in range(args.n_head):
+                ego_user = tf.matmul(side_user, weights['W_gc_%d' % j]) #+ weights['b_gc_%d' % j]
+                ego_item = tf.matmul(side_item, weights['W_gc_%d' % j])
+                ego_embeddings = tf.concat([ego_user, ego_item], axis=0)
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 1.2251:
+        if args.node_dropout_flag:
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        for k in range(0, n_layers):
+            temp_embed = []
+            for f in range(n_fold):
+                temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+            side_embeddings = tf.concat(temp_embed, 0)
+            side_user, side_item = tf.split(side_embeddings, [n_users, n_items], 0)
+            for j in range(args.n_head):
+                ego_user = tf.nn.relu(tf.matmul(side_user, weights['W_gc_%d' % j])) #+ weights['b_gc_%d' % j]
+                ego_item = tf.nn.relu(tf.matmul(side_item, weights['W_gc_%d' % j]))
+                ego_embeddings = tf.concat([ego_user, ego_item], axis=0)
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 1.226:
+        if args.node_dropout_flag:
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        for k in range(0, n_layers):
+            temp_embed = []
+            for f in range(n_fold):
+                temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+            side_embeddings = tf.concat(temp_embed, 0)
+            side_user, side_item = tf.split(side_embeddings, [n_users, n_items], 0)
+            for j in range(args.n_head):
+                ego_user = tf.matmul(side_user, weights['W_gc_%d' % j]) #+ weights['b_gc_%d' % j]
+                ego_item = tf.matmul(side_item, weights['W_bi_%d' % j])
+                ego_embeddings = tf.concat([ego_user, ego_item], axis=0)
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 1.227:
+        # recall=[0.16189	0.22930	0.27942	0.31817	0.35028], ndcg=[0.22536	0.26520	0.29162	0.31106	0.32655]
+        if args.node_dropout_flag:
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        for k in range(0, n_layers):
+            ego_user, ego_item = tf.split(ego_embeddings, [n_users, n_items], 0)
+            fake_item = cgan_generator(ego_user, weights, direction='uv')
+            fake_user = cgan_generator(ego_item, weights, direction='vu')
+            ego_embeddings = tf.concat([fake_item, fake_user], axis=0)
+            temp_embed = []
+            for f in range(n_fold):
+                temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+            side_embeddings = tf.concat(temp_embed, 0)
+            for j in range(args.n_head):
+                ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % j])# + weights['b_gc_%d' % j]
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 1.2271:
+        if args.node_dropout_flag:
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        fake_item = cgan_generator(weights['user_embedding'], weights, direction='uv')
+        fake_user = cgan_generator(weights['item_embedding'], weights, direction='vu')
+        ego_embeddings = tf.concat([fake_item, fake_user], axis=0)
+        for k in range(0, n_layers):
+            temp_embed = []
+            for f in range(n_fold):
+                temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+            side_embeddings = tf.concat(temp_embed, 0)
+            for j in range(args.n_head):
+                ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % j])# + weights['b_gc_%d' % j]
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 1.2272:
+        if args.node_dropout_flag:
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        fake_item = cgan_generator(weights['user_embedding'], weights, direction='uv', activation=None)
+        fake_user = cgan_generator(weights['item_embedding'], weights, direction='vu', activation=None)
+        ego_embeddings = tf.concat([fake_item, fake_user], axis=0)
+        for k in range(0, n_layers):
+            temp_embed = []
+            for f in range(n_fold):
+                temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+            side_embeddings = tf.concat(temp_embed, 0)
+            for j in range(args.n_head):
+                ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % j])# + weights['b_gc_%d' % j]
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 1.2273:
+        if args.node_dropout_flag:
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        for k in range(0, n_layers):
+            ego_user, ego_item = tf.split(ego_embeddings, [n_users, n_items], 0)
+            for j in range(args.n_head):
+                fake_item = cgan_generator(ego_user, weights, direction='uv')
+                fake_user = cgan_generator(ego_item, weights, direction='vu')
+                ego_embeddings = tf.concat([fake_item, fake_user], axis=0)
+
+                temp_embed = []
+                for f in range(n_fold):
+                    temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+                ego_embeddings = tf.concat(temp_embed, 0)
+
+                #ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % j])# + weights['b_gc_%d' % j]
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
     elif args.sub_version == 1.23:
         if args.node_dropout_flag:
             A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
@@ -446,7 +743,6 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
         return u_g_embeddings, i_g_embeddings
     return None, None
 
-
 def _split_A_hat_bgcf(X, n_fold, n_nodes):
     A_fold_hat = []
 
@@ -461,6 +757,7 @@ def _split_A_hat_bgcf(X, n_fold, n_nodes):
     return A_fold_hat
 
 def _create_bige_embed(config, weights, mess_dropout, node_dropout, n_layers, n_fold, n_users, n_items):
+    adj_user, adj_item = config['adj_user'], config['adj_item']
     if args.sub_version == 2.0: # bige version of v1.2
         print(adj_user.shape, adj_item.shape, '/////////////')
         A_fold_hat_user = _split_A_hat_bgcf(adj_user, n_fold, n_users)  # p x q
@@ -556,7 +853,488 @@ def _create_bige_embed(config, weights, mess_dropout, node_dropout, n_layers, n_
         u_g_embeddings = tf.concat(all_embeddings_user, 1)
         i_g_embeddings = tf.concat(all_embeddings_item, 1)
         return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 3.0:
+        A_fold_hat_user = _split_A_hat_bgcf(adj_user, n_fold, n_users)  # p x q
+        A_fold_hat_item = _split_A_hat_bgcf(adj_item, n_fold, n_items)  # q x p
+
+        ego_user, ego_item = weights['user_embedding'], weights['item_embedding']
+        all_user_embs, all_item_embs = [ego_user], [ego_item]
+        for k in range(0, n_layers):
+            temp_embed_user, temp_embed_item = [], []
+            for f in range(n_fold):
+                temp_embed_user.append(tf.sparse_tensor_dense_matmul(A_fold_hat_user[f], ego_item))
+                temp_embed_item.append(tf.sparse_tensor_dense_matmul(A_fold_hat_item[f], ego_user))
+            side_user = tf.concat(temp_embed_user, 0)
+            side_item = tf.concat(temp_embed_item, 0)
+            for j in range(args.n_head):
+                ego_user = tf.matmul(side_user, weights['W_gc_%d' % j]) + weights['b_gc_%d' % j]
+                ego_item = tf.matmul(side_item, weights['W_gc_%d' % j]) + weights['b_gc_%d' % j]
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_user = tf.math.l2_normalize(ego_user, axis=1)
+                all_user_embs += [norm_user]
+                norm_item = tf.math.l2_normalize(ego_item, axis=1)
+                all_item_embs += [norm_item]
+        u_g_embeddings = tf.concat(all_user_embs, 1)
+        i_g_embeddings = tf.concat(all_item_embs, 1)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 3.01:
+        A_fold_hat_user = _split_A_hat_bgcf(adj_user, n_fold, n_users)  # p x q
+        A_fold_hat_item = _split_A_hat_bgcf(adj_item, n_fold, n_items)  # q x p
+
+        ego_user, ego_item = weights['user_embedding'], weights['item_embedding']
+        all_user_embs, all_item_embs = [ego_user], [ego_item]
+        for k in range(0, n_layers):
+            temp_embed_user, temp_embed_item = [], []
+            for f in range(n_fold):
+                temp_embed_user.append(tf.sparse_tensor_dense_matmul(A_fold_hat_user[f], ego_item))
+                temp_embed_item.append(tf.sparse_tensor_dense_matmul(A_fold_hat_item[f], ego_user))
+            side_user = tf.concat(temp_embed_user, 0)
+            side_item = tf.concat(temp_embed_item, 0)
+            for j in range(args.n_head):
+                ego_user = tf.matmul(side_user, weights['Wu_%d' % j]) + weights['bu_%d' % j]
+                ego_item = tf.matmul(side_item, weights['Wi_%d' % j]) + weights['bi_%d' % j]
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_user = tf.math.l2_normalize(ego_user, axis=1)
+                all_user_embs += [norm_user]
+                norm_item = tf.math.l2_normalize(ego_item, axis=1)
+                all_item_embs += [norm_item]
+        u_g_embeddings = tf.concat(all_user_embs, 1)
+        i_g_embeddings = tf.concat(all_item_embs, 1)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 3.1:
+        A_fold_hat_user = _split_A_hat_bgcf(adj_user, n_fold, n_users)  # p x q
+        A_fold_hat_item = _split_A_hat_bgcf(adj_item, n_fold, n_items)  # q x p
+
+        ego_user, ego_item = weights['user_embedding'], weights['item_embedding']
+        all_user_embs, all_item_embs = [ego_user], [ego_item]
+        for k in range(0, n_layers):
+            fake_user = cgan_generator(ego_item, weights, direction='vu')
+            fake_item = cgan_generator(ego_user, weights, direction='uv')
+            temp_embed_user, temp_embed_item = [], []
+            for f in range(n_fold):
+                temp_embed_user.append(tf.sparse_tensor_dense_matmul(A_fold_hat_user[f], fake_user))
+                temp_embed_item.append(tf.sparse_tensor_dense_matmul(A_fold_hat_item[f], fake_item))
+            side_user = tf.concat(temp_embed_user, 0)
+            side_item = tf.concat(temp_embed_item, 0)
+            for j in range(args.n_head):
+                ego_user = tf.matmul(side_user, weights['Wu_%d' % j]) + weights['bu_%d' % j]
+                ego_item = tf.matmul(side_item, weights['Wu_%d' % j]) + weights['bu_%d' % j]
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_user = tf.math.l2_normalize(ego_user, axis=1)
+                all_user_embs += [norm_user]
+                norm_item = tf.math.l2_normalize(ego_item, axis=1)
+                all_item_embs += [norm_item]
+        u_g_embeddings = tf.concat(all_user_embs, 1)
+        i_g_embeddings = tf.concat(all_item_embs, 1)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 3.11:
+        A_fold_hat_user = _split_A_hat_bgcf(adj_user, n_fold, n_users)  # p x q
+        A_fold_hat_item = _split_A_hat_bgcf(adj_item, n_fold, n_items)  # q x p
+
+        ego_user, ego_item = weights['user_embedding'], weights['item_embedding']
+        all_user_embs, all_item_embs = [ego_user], [ego_item]
+        for k in range(0, n_layers):
+            fake_user = cgan_generator(ego_item, weights, direction='vu')
+            fake_item = cgan_generator(ego_user, weights, direction='uv')
+            temp_embed_user, temp_embed_item = [], []
+            for f in range(n_fold):
+                temp_embed_user.append(tf.sparse_tensor_dense_matmul(A_fold_hat_user[f], fake_user))
+                temp_embed_item.append(tf.sparse_tensor_dense_matmul(A_fold_hat_item[f], fake_item))
+            side_user = tf.concat(temp_embed_user, 0)
+            side_item = tf.concat(temp_embed_item, 0)
+            for j in range(args.n_head):
+                ego_user = tf.matmul(side_user, weights['Wu_%d' % j]) + weights['bu_%d' % j]
+                ego_item = tf.matmul(side_item, weights['Wi_%d' % j]) + weights['bi_%d' % j]
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_user = tf.math.l2_normalize(ego_user, axis=1)
+                all_user_embs += [norm_user]
+                norm_item = tf.math.l2_normalize(ego_item, axis=1)
+                all_item_embs += [norm_item]
+        u_g_embeddings = tf.concat(all_user_embs, 1)
+        i_g_embeddings = tf.concat(all_item_embs, 1)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 3.6:
+        A_fold_hat_user = _split_A_hat_bgcf(adj_user, n_fold, n_users)  # p x q
+        A_fold_hat_item = _split_A_hat_bgcf(adj_item, n_fold, n_items)  # q x p
+        ego_user, ego_item = weights['user_embedding'], weights['item_embedding']
+        # ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings_user, all_embeddings_item = [ego_user], [ego_item]
+        for k in range(0, n_layers):
+            temp_embed_user, temp_embed_item = [], []
+            for f in range(n_fold):
+                temp_embed_user.append(tf.sparse_tensor_dense_matmul(A_fold_hat_user[f], ego_item))
+                temp_embed_item.append(tf.sparse_tensor_dense_matmul(A_fold_hat_item[f], ego_user))
+            side_user = tf.concat(temp_embed_user, 0)
+            side_item = tf.concat(temp_embed_item, 0)
+            for j in range(args.n_head):
+                ego_user = tf.matmul(side_user, weights['W_gc_%d' % j])  # + weights['b_gc_%d' % j]
+                ego_item = tf.matmul(side_item, weights['W_gc_%d' % j])
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_user = tf.math.l2_normalize(ego_user, axis=1)
+                norm_item = tf.math.l2_normalize(ego_item, axis=1)
+                all_embeddings_user += [norm_user]
+                all_embeddings_item += [norm_item]
+        u_g_embeddings = tf.concat(all_embeddings_user, 1)
+        i_g_embeddings = tf.concat(all_embeddings_item, 1)
+        # u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
     return None, None
+
+
+def cgan_generator(inp, weights, direction='uv', activation=tf.nn.relu):
+    hidden = inp
+    for k in range(args.n_layers_generator):
+        gw = weights['gW_uv_%d' % k] if direction == 'uv' else weights['gW_vu_%d' % k]
+        gb = weights['gb_uv_%d' % k] if direction == 'vu' else weights['gb_vu_%d' % k]
+        hidden = tf.matmul(hidden, gw) + gb
+        if activation is not None:
+            hidden = activation(hidden)
+    return hidden
+
+def cgan_discriminator(inp, weights, domain='u', activation=tf.nn.relu):
+    hidden = inp
+    for k in range(args.n_layers_discriminator):
+        act = tf.nn.sigmoid if k == args.n_layers_discriminator - 1 else activation
+        gw = weights['dW_uv_%d' % k] if domain == 'u' else weights['dW_vu_%d' % k]
+        gb = weights['db_uv_%d' % k] if domain == 'v' else weights['db_vu_%d' % k]
+        hidden = act(tf.matmul(hidden, gw) + gb)
+    return hidden
+
+# def _create_cycle_gan_loss(users, pos_items, neg_items, hiddnes, all_weights):
+#     gan_loss, cycle_loss = None, None
+#     # for rusers, ritems, fusers, fitems in hiddnes:
+#     for rusers, ritems, fusers, fitems in hiddnes:
+#         real_users = tf.nn.embedding_lookup(rusers, users)
+#         real_poses = tf.nn.embedding_lookup(ritems, pos_items)
+#         real_negs = tf.nn.embedding_lookup(ritems, neg_items)
+#         fake_pos_users = tf.nn.embedding_lookup(fusers, pos_items)
+#         fake_neg_users = tf.nn.embedding_lookup(fusers, neg_items)
+#         fake_items = tf.nn.embedding_lookup(fitems, users)
+#
+#         real_loss = tf.reduce_mean(tf.squared_difference(cgan_discriminator(real_users, all_weights, domain='u'), 0.9)) \
+#                     + tf.reduce_mean(tf.squared_difference(cgan_discriminator(real_poses, all_weights, domain='v'), 0.9)) \
+#                     + tf.reduce_mean(tf.squared_difference(cgan_discriminator(real_negs, all_weights, domain='v'), 0.9))
+#         fake_loss = tf.reduce_mean(tf.square(cgan_discriminator(fake_items, all_weights, domain='v'))) \
+#                     + tf.reduce_mean(tf.square(cgan_discriminator(fake_pos_users, all_weights, domain='u'))) \
+#                     + tf.reduce_mean(tf.square(cgan_discriminator(fake_neg_users, all_weights, domain='u')))
+#         if gan_loss is None:
+#             gan_loss = (real_loss + fake_loss) / 2
+#         else:
+#             gan_loss += (real_loss + fake_loss) / 2
+#
+#         cycle_users_loss = tf.reduce_mean(tf.abs(cgan_generator(fake_items, all_weights, direction='vu') - real_users))
+#         cycle_poses_loss = tf.reduce_mean(tf.abs(cgan_generator(fake_pos_users, all_weights, direction='uv') - real_poses))
+#         cycle_negs_loss = tf.reduce_mean(tf.abs(cgan_generator(fake_neg_users, all_weights, direction='uv') - real_negs))
+#         if cycle_loss is None:
+#             cycle_loss = cycle_users_loss + cycle_poses_loss + cycle_negs_loss
+#         else:
+#             cycle_loss += cycle_users_loss + cycle_poses_loss + cycle_negs_loss
+#     return gan_loss, cycle_loss
+
+# def _create_cycle_gan_loss(users, pos_items, neg_items, hiddnes, all_weights):
+#     gan_loss, cycle_loss = None, None
+#     # for rusers, ritems, fusers, fitems in hiddnes:
+#     for rusers, ritems, _, _ in hiddnes:
+#         real_users = tf.nn.embedding_lookup(rusers, users)
+#         real_poses = tf.nn.embedding_lookup(ritems, pos_items)
+#         real_negs = tf.nn.embedding_lookup(ritems, neg_items)
+#         # fake_pos_users = tf.nn.embedding_lookup(fusers, pos_items)
+#         # fake_neg_users = tf.nn.embedding_lookup(fusers, neg_items)
+#         # fake_items = tf.nn.embedding_lookup(fitems, users)
+#
+#         real_loss = tf.reduce_mean(tf.squared_difference(cgan_discriminator(real_users, all_weights, domain='u'), 0.9)) \
+#                     + tf.reduce_mean(tf.squared_difference(cgan_discriminator(real_poses, all_weights, domain='v'), 0.9)) \
+#                     + tf.reduce_mean(tf.squared_difference(cgan_discriminator(real_negs, all_weights, domain='v'), 0.9))
+#         fake_loss = tf.reduce_mean(tf.square(cgan_discriminator(
+#                         cgan_generator(real_users, all_weights, direction='uv'), all_weights, domain='v'))) \
+#                     + tf.reduce_mean(tf.square(cgan_discriminator(
+#                         cgan_generator(real_poses, all_weights, direction='vu'), all_weights, domain='u'))) \
+#                     + tf.reduce_mean(tf.square(cgan_discriminator(
+#                         cgan_generator(real_negs, all_weights, direction='vu'), all_weights, domain='u')))
+#         if gan_loss is None:
+#             gan_loss = (real_loss + fake_loss) / 2
+#         else:
+#             gan_loss += (real_loss + fake_loss) / 2
+#
+#         # cycle_users_loss = tf.reduce_mean(tf.abs(cgan_generator(fake_items, all_weights, direction='vu') - real_users))
+#         # cycle_poses_loss = tf.reduce_mean(tf.abs(cgan_generator(fake_pos_users, all_weights, direction='uv') - real_poses))
+#         # cycle_negs_loss = tf.reduce_mean(tf.abs(cgan_generator(fake_neg_users, all_weights, direction='uv') - real_negs))
+#         cycle_users_loss = tf.reduce_mean(tf.abs(cgan_generator(
+#                 cgan_generator(real_users, all_weights, direction='uv'), all_weights, direction='vu') - real_users))
+#         cycle_poses_loss = tf.reduce_mean(tf.abs(cgan_generator(
+#                 cgan_generator(real_poses, all_weights, direction='vu'), all_weights, direction='uv') - real_poses))
+#         cycle_negs_loss = tf.reduce_mean(tf.abs(cgan_generator(
+#                 cgan_generator(real_negs, all_weights, direction='vu'), all_weights, direction='uv') - real_negs))
+#         if cycle_loss is None:
+#             cycle_loss = cycle_users_loss + cycle_poses_loss + cycle_negs_loss
+#         else:
+#             cycle_loss += cycle_users_loss + cycle_poses_loss + cycle_negs_loss
+#     return gan_loss, cycle_loss
+
+def _create_cycle_gan_loss(users, pos_items, neg_items, hiddnes, all_weights):
+    gan_loss, cycle_loss = None, None
+    # for rusers, ritems, fusers, fitems in hiddnes:
+    for rusers, ritems, fusers, fitems in hiddnes:
+        real_users = tf.nn.embedding_lookup(rusers, users)
+        real_poses = tf.nn.embedding_lookup(ritems, pos_items)
+        real_negs = tf.nn.embedding_lookup(ritems, neg_items)
+        fake_pos_users = tf.nn.embedding_lookup(fusers, pos_items)
+        fake_neg_users = tf.nn.embedding_lookup(fusers, neg_items)
+        fake_items = tf.nn.embedding_lookup(fitems, users)
+
+        real_loss = tf.reduce_mean(tf.squared_difference(cgan_discriminator(fake_pos_users, all_weights, domain='u'), 0.9)) \
+                    + tf.reduce_mean(tf.squared_difference(cgan_discriminator(fake_neg_users, all_weights, domain='u'), 0.9)) \
+                    + tf.reduce_mean(tf.squared_difference(cgan_discriminator(fake_items, all_weights, domain='u'), 0.9))
+        fake_loss = tf.reduce_mean(tf.square(cgan_discriminator(real_users, all_weights, domain='u'))) \
+                    + tf.reduce_mean(tf.square(cgan_discriminator(real_poses, all_weights, domain='u'))) \
+                    + tf.reduce_mean(tf.square(cgan_discriminator(real_negs, all_weights, domain='u')))
+        if gan_loss is None:
+            gan_loss = (real_loss + fake_loss) / 2
+        else:
+            gan_loss += (real_loss + fake_loss) / 2
+    return gan_loss, 0
+
+def _create_cgan_embed(config, mess_dropout, weights, n_layers, n_fold, n_users, n_items):
+    adj_user, adj_item = config['adj_user'], config['adj_item']
+    if args.sub_version == 4.0: # bige version of v1.2
+        A_fold_hat_user = _split_A_hat_bgcf(adj_user, n_fold, n_users)  # p x q
+        A_fold_hat_item = _split_A_hat_bgcf(adj_item, n_fold, n_items)  # q x p
+
+        ego_user, ego_item = weights['user_embedding'], weights['item_embedding']
+        all_user_embs, all_item_embs, hiddens = [ego_user], [ego_item], []
+        for k in range(0, n_layers):
+            fake_user = cgan_generator(ego_item, weights, direction='vu')
+            fake_item = cgan_generator(ego_user, weights, direction='uv')
+            hiddens.append([ego_user, ego_item, fake_user, fake_item])
+            temp_embed_user, temp_embed_item = [], []
+            for f in range(n_fold):
+                temp_embed_user.append(tf.sparse_tensor_dense_matmul(A_fold_hat_user[f], fake_user))
+                temp_embed_item.append(tf.sparse_tensor_dense_matmul(A_fold_hat_item[f], fake_item))
+            side_user = tf.concat(temp_embed_user, 0)
+            side_item = tf.concat(temp_embed_item, 0)
+            for j in range(args.n_head):
+                ego_user = tf.matmul(side_user, weights['Wu_%d' % j])
+                ego_item = tf.matmul(side_item, weights['Wu_%d' % j])
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_user = tf.math.l2_normalize(ego_user, axis=1)
+                all_user_embs += [norm_user]
+                norm_item = tf.math.l2_normalize(ego_item, axis=1)
+                all_item_embs += [norm_item]
+        u_g_embeddings = tf.concat(all_user_embs, 1)
+        i_g_embeddings = tf.concat(all_item_embs, 1)
+        return u_g_embeddings, i_g_embeddings, hiddens
+    elif args.sub_version == 4.1:
+        A_fold_hat_user = _split_A_hat_bgcf(adj_user, n_fold, n_users)  # p x q
+        A_fold_hat_item = _split_A_hat_bgcf(adj_item, n_fold, n_items)  # q x p
+        ego_user, ego_item = weights['user_embedding'], weights['item_embedding']
+        all_user_embs, all_item_embs, hiddens = [ego_user], [ego_item], []
+        for k in range(0, n_layers):
+            for j in range(args.n_head):
+                fake_user = cgan_generator(ego_item, weights, direction='vu')
+                fake_item = cgan_generator(ego_user, weights, direction='uv')
+                hiddens.append([ego_user, ego_item, fake_user, fake_item])
+                temp_embed_user, temp_embed_item = [], []
+                for f in range(n_fold):
+                    temp_embed_user.append(tf.sparse_tensor_dense_matmul(A_fold_hat_user[f], fake_user))
+                    temp_embed_item.append(tf.sparse_tensor_dense_matmul(A_fold_hat_item[f], fake_item))
+                side_user = tf.concat(temp_embed_user, 0)
+                side_item = tf.concat(temp_embed_item, 0)
+                ego_user = tf.matmul(side_user, weights['Wu_%d' % j])
+                ego_item = tf.matmul(side_item, weights['Wu_%d' % j])
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_user = tf.math.l2_normalize(ego_user, axis=1)
+                all_user_embs += [norm_user]
+                norm_item = tf.math.l2_normalize(ego_item, axis=1)
+                all_item_embs += [norm_item]
+        u_g_embeddings = tf.concat(all_user_embs, 1)
+        i_g_embeddings = tf.concat(all_item_embs, 1)
+        return u_g_embeddings, i_g_embeddings, hiddens
+    elif args.sub_version == 4.2:
+        A_fold_hat_user = _split_A_hat_bgcf(adj_user, n_fold, n_users)  # p x q
+        A_fold_hat_item = _split_A_hat_bgcf(adj_item, n_fold, n_items)  # q x p
+        ego_user, ego_item = weights['user_embedding'], weights['item_embedding']
+        all_user_embs, all_item_embs, hiddens = [ego_user], [ego_item], []
+        for k in range(0, n_layers):
+            for j in range(args.n_head):
+                fake_user = cgan_generator(ego_item, weights, direction='vu')
+                fake_item = cgan_generator(ego_user, weights, direction='uv')
+                hiddens.append([ego_user, ego_item, fake_user, fake_item])
+                temp_embed_user, temp_embed_item = [], []
+                for f in range(n_fold):
+                    temp_embed_user.append(tf.sparse_tensor_dense_matmul(A_fold_hat_user[f], fake_user))
+                    temp_embed_item.append(tf.sparse_tensor_dense_matmul(A_fold_hat_item[f], fake_item))
+                ego_user = tf.concat(temp_embed_user, 0)
+                ego_item = tf.concat(temp_embed_item, 0)
+                # ego_user = tf.matmul(side_user, weights['Wu_%d' % j])
+                # ego_item = tf.matmul(side_item, weights['Wu_%d' % j])
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_user = tf.math.l2_normalize(ego_user, axis=1)
+                all_user_embs += [norm_user]
+                norm_item = tf.math.l2_normalize(ego_item, axis=1)
+                all_item_embs += [norm_item]
+        u_g_embeddings = tf.concat(all_user_embs, 1)
+        i_g_embeddings = tf.concat(all_item_embs, 1)
+        return u_g_embeddings, i_g_embeddings, hiddens
+    elif args.sub_version == 4.3:
+        if args.node_dropout_flag:
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        fake_item = cgan_generator(weights['user_embedding'], weights, direction='uv')
+        fake_user = cgan_generator(weights['item_embedding'], weights, direction='vu')
+        hiddens = [[weights['user_embedding'], weights['item_embedding'], fake_user, fake_item]]
+        ego_embeddings = tf.concat([fake_item, fake_user], axis=0)
+        for k in range(0, n_layers):
+            temp_embed = []
+            for f in range(n_fold):
+                temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+            side_embeddings = tf.concat(temp_embed, 0)
+            for j in range(args.n_head):
+                ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % j])# + weights['b_gc_%d' % j]
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings, hiddens
+    elif args.sub_version == 4.31:
+        if args.node_dropout_flag:
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        fake_item = cgan_generator(weights['user_embedding'], weights, direction='uv')
+        fake_user = cgan_generator(weights['item_embedding'], weights, direction='vu')
+        hiddens = [[weights['user_embedding'], weights['item_embedding'], fake_user, fake_item]]
+        ego_embeddings = tf.concat([fake_item, fake_user], axis=0)
+        for k in range(0, n_layers):
+            temp_embed = []
+            for f in range(n_fold):
+                temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+            side_embeddings = tf.concat(temp_embed, 0)
+            for j in range(args.n_head):
+                ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % j])# + weights['b_gc_%d' % j]
+                ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings, hiddens
+    elif args.sub_version == 4.4:
+        if args.node_dropout_flag:
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        hiddens = []
+        for k in range(0, n_layers):
+            temp_embed = []
+            for f in range(n_fold):
+                temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+            side_embeddings = tf.concat(temp_embed, 0)
+            for j in range(args.n_head):
+                ego_user, ego_item = tf.split(side_embeddings, [n_users, n_items], 0)
+                fake_item = cgan_generator(ego_user, weights, direction='uv')
+                fake_user = cgan_generator(ego_item, weights, direction='vu')
+                hiddens.append([ego_user, ego_item, fake_user, fake_item])
+                side_embeddings = tf.concat([fake_item, fake_user], axis=0)
+
+                ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % j])# + weights['b_gc_%d' % j]
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings, hiddens
+    elif args.sub_version == 4.5:
+        if args.node_dropout_flag:
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        hiddens = []
+        for k in range(0, n_layers):
+            for j in range(args.n_head):
+                ego_user, ego_item = tf.split(ego_embeddings, [n_users, n_items], 0)
+                fake_item = cgan_generator(ego_user, weights, direction='uv')
+                fake_user = cgan_generator(ego_item, weights, direction='vu')
+                hiddens.append([ego_user, ego_item, fake_user, fake_item])
+                ego_embeddings = tf.concat([fake_item, fake_user], axis=0)
+
+                temp_embed = []
+                for f in range(n_fold):
+                    temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+                side_embeddings = tf.concat(temp_embed, 0)
+
+                ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % j])# + weights['b_gc_%d' % j]
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings, hiddens
+    elif args.sub_version == 4.6:
+        if args.node_dropout_flag:
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        hiddens = []
+        for k in range(0, n_layers):
+            for j in range(args.n_head):
+                ego_user, ego_item = tf.split(ego_embeddings, [n_users, n_items], 0)
+                fake_item = cgan_generator(ego_user, weights, direction='uv')
+                fake_user = cgan_generator(ego_item, weights, direction='vu')
+                hiddens.append([ego_user, ego_item, fake_user, fake_item])
+                ego_embeddings = tf.concat([fake_item, fake_user], axis=0)
+
+                temp_embed = []
+                for f in range(n_fold):
+                    temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+                ego_embeddings = tf.concat(temp_embed, 0)
+
+                #ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % j])# + weights['b_gc_%d' % j]
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings, hiddens
+    elif args.sub_version == 4.7:
+        if args.node_dropout_flag:
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        hiddens = []
+        for k in range(0, n_layers):
+            ego_user, ego_item = tf.split(ego_embeddings, [n_users, n_items], 0)
+            hiddens.append([ego_user, ego_item])
+            for j in range(args.n_head):
+                fake_item = cgan_generator(ego_user, weights, direction='uv')
+                fake_user = cgan_generator(ego_item, weights, direction='vu')
+                ego_embeddings = tf.concat([fake_item, fake_user], axis=0)
+
+                temp_embed = []
+                for f in range(n_fold):
+                    temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+                ego_embeddings = tf.concat(temp_embed, 0)
+
+                #ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % j])# + weights['b_gc_%d' % j]
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [norm_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings, hiddens
+    return None, None, []
 
 def _create_bpr_loss(users, pos_items, neg_items, decay):
     pos_scores = tf.reduce_sum(tf.multiply(users, pos_items), axis=1)
@@ -584,7 +1362,7 @@ def _create_bpr_loss(users, pos_items, neg_items, decay):
 def build_model(data_config, pretrain_data):
     n_users = data_config['n_users']
     n_items = data_config['n_items']
-    n_fold = 10
+    n_fold = 100
     norm_adj = data_config['norm_adj']
     # n_nonzero_elems = norm_adj.count_nonzero()
     weight_size = eval(args.layer_size)
@@ -607,6 +1385,9 @@ def build_model(data_config, pretrain_data):
     elif args.alg_type in ['bige']:
         ua_embeddings, ia_embeddings = _create_bige_embed(config, weights, mess_dropout,
                                                           node_dropout, n_layers, n_fold, n_users, n_items)
+    elif args.alg_type in ['cgan']:
+        ua_embeddings, ia_embeddings, hiddens = _create_cgan_embed(data_config, mess_dropout, weights, n_layers, n_fold,
+                                                                   n_users, n_items)
     else:
         raise NotImplementedError("alg_type %s not supported!" % args.alg_type)
 
@@ -616,7 +1397,11 @@ def build_model(data_config, pretrain_data):
     batch_ratings = tf.matmul(u_g_embeddings, pos_i_g_embeddings, transpose_a=False, transpose_b=True)
 
     mf_loss, emb_loss, reg_loss = _create_bpr_loss(u_g_embeddings, pos_i_g_embeddings, neg_i_g_embeddings, decay)
-    loss = mf_loss + emb_loss + reg_loss
+    if args.alg_type == 'cgan':
+        gan_loss, cycle_loss = _create_cycle_gan_loss(users, pos_items, neg_items, hiddens, weights)
+        loss = mf_loss + emb_loss + reg_loss + args.cgan_weight * (gan_loss + 10 * cycle_loss)
+    else:
+        loss = mf_loss + emb_loss + reg_loss
     return [users, pos_items, neg_items, node_dropout, mess_dropout], batch_ratings, [loss, mf_loss, emb_loss, reg_loss]
 
 def load_pretrained_data():
@@ -642,7 +1427,10 @@ if __name__ == '__main__':
         config['norm_adj'] = norm_adj
     elif args.adj_type == 'appnp-ns':
         norm_adj = data_generator.get_appnp_mat(self_connection=False)
+        adj_user, adj_item = data_generator.get_appnp_split_mat(norm_adj)
         config['norm_adj'] = norm_adj
+        config['adj_user'] = adj_user
+        config['adj_item'] = adj_item
     elif args.adj_type == 'appnp_bige':
         norm_adj = data_generator.get_appnp_mat()
         adj_user, adj_item = data_generator.get_appnp_split_mat(norm_adj)
