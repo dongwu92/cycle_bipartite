@@ -1424,7 +1424,10 @@ if __name__ == '__main__':
 
     if args.adj_type == 'appnp':
         norm_adj = data_generator.get_appnp_mat()
+        adj_user, adj_item = data_generator.get_appnp_split_mat(norm_adj)
         config['norm_adj'] = norm_adj
+        config['adj_user'] = adj_user
+        config['adj_item'] = adj_item
     elif args.adj_type == 'appnp-ns':
         norm_adj = data_generator.get_appnp_mat(self_connection=False)
         adj_user, adj_item = data_generator.get_appnp_split_mat(norm_adj)
@@ -1439,14 +1442,21 @@ if __name__ == '__main__':
         config['adj_item'] = adj_item
     else:
         plain_adj, norm_adj, mean_adj = data_generator.get_adj_mat()
+        adj_user, adj_item, _, _ = data_generator.get_split_adj_mat()
         if args.adj_type == 'plain':
             config['norm_adj'] = plain_adj
+            config['adj_user'] = adj_user
+            config['adj_item'] = adj_item
             print('use the plain adjacency matrix')
         elif args.adj_type == 'norm':
             config['norm_adj'] = norm_adj
+            config['adj_user'] = adj_user
+            config['adj_item'] = adj_item
             print('use the normalized adjacency matrix')
         elif args.adj_type == 'gcmc':
             config['norm_adj'] = mean_adj
+            config['adj_user'] = adj_user
+            config['adj_item'] = adj_item
             print('use the gcmc adjacency matrix')
         elif args.adj_type == 'bige':
             adj_user, adj_item, _, _ = data_generator.get_split_adj_mat()
