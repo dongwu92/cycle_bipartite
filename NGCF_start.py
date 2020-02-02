@@ -648,8 +648,8 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
             A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
         ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
         all_embeddings = [ego_embeddings]
-        fake_item = cgan_generator(weights['user_embedding'], weights, direction='uv', activation=None)
-        fake_user = cgan_generator(weights['item_embedding'], weights, direction='vu', activation=None)
+        fake_item = cgan_generator(weights['user_embedding'], weights, direction='uv')
+        fake_user = cgan_generator(weights['item_embedding'], weights, direction='vu')
         ego_embeddings = tf.concat([fake_item, fake_user], axis=0)
         for k in range(0, n_layers):
             temp_embed = []
@@ -657,7 +657,7 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
                 temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
             side_embeddings = tf.concat(temp_embed, 0)
             for j in range(args.n_head):
-                ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % j])# + weights['b_gc_%d' % j]
+                ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % j]) + weights['b_gc_%d' % j]
                 # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
                 norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
                 all_embeddings += [norm_embeddings]
@@ -1563,7 +1563,8 @@ if __name__ == '__main__':
             sys.exit()
 
         # print the test evaluation metrics each 10 epochs; pos:neg = 1:10.
-        if (epoch + 1) % 10 != 0 or epoch < 100:
+        # if (epoch + 1) % 10 != 0 or epoch < 100:
+        if ((epoch + 1) % 10 != 0 and (epoch < 570 or epoch > 590)) or epoch < 100:
             if args.verbose > 0 and epoch % args.verbose == 0:
                 perf_str = 'Epoch %d [%.1fs]: train==[%.5f=%.5f + %.5f]' % (
                     epoch, time() - t1, loss, mf_loss, reg_loss)
