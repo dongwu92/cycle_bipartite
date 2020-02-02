@@ -48,6 +48,7 @@ class Data(object):
                         items = [int(i) for i in l.split(' ')[1:]]
                     except Exception:
                         continue
+                    print(len(items), self.n_items, l)
                     self.n_items = max(self.n_items, max(items))
                     self.n_test += len(items)
         self.n_items += 1
