@@ -1456,7 +1456,7 @@ def build_model(data_config, pretrain_data):
         loss = mf_loss + emb_loss + reg_loss + args.cgan_weight * (gan_loss + 10 * cycle_loss)
     else:
         loss = mf_loss + emb_loss + reg_loss
-    return [users, pos_items, neg_items, node_dropout, mess_dropout], batch_ratings, [loss, mf_loss, emb_loss, reg_loss]
+    return [users, pos_items, neg_items, node_dropout, mess_dropout], batch_ratings, [loss, mf_loss, emb_loss, reg_loss], weights
 
 def load_pretrained_data():
     pretrain_path = '%spretrain/%s/%s.npz' % (args.proj_path, args.dataset, 'embedding')
@@ -1527,7 +1527,7 @@ if __name__ == '__main__':
     else:
         pretrain_data = None
 
-    placeholders, batch_ratings, losses = build_model(config, pretrain_data)
+    placeholders, batch_ratings, losses, weights = build_model(config, pretrain_data)
     users, pos_items, neg_items, node_dropout, mess_dropout = placeholders
     opt_loss, opt_mf_loss, opt_emb_loss, opt_reg_loss = losses
     opt = tf.train.AdamOptimizer(learning_rate=args.lr).minimize(opt_loss)
@@ -1593,6 +1593,7 @@ if __name__ == '__main__':
     loss_loger, pre_loger, rec_loger, ndcg_loger, hit_loger = [], [], [], [], []
     stopping_step = 0
     should_stop = False
+    prev_rec = 0
 
     for epoch in range(args.epoch):
         t1 = time()
@@ -1648,6 +1649,12 @@ if __name__ == '__main__':
             perf_str = 'Epoch %d [%.1fs + %.1fs]: train==[%.5f=%.5f + %.5f + %.5f], recall=%.5f, ndcg=%.5f' % \
                        (epoch, t2 - t1, t3 - t2, loss, mf_loss, emb_loss, reg_loss, ret['recall'][0], ret['ndcg'][0])
             print(perf_str)
+            if ret['recall'][0] > prev_rec:
+                user_embs = sess.run(weights['user_embedding'])
+                item_embs = sess.run(weights['item_embedding'])
+                np.save('weights/' + args.dataset + '_' + args.alg_type + '_' + args.adj_type + '_' + str(args.sub_version) + '_user_emb.npy', user_embs)
+                np.save('weights/' + args.dataset + '_' + args.alg_type + '_' + args.adj_type + '_' + str(args.sub_version) + '_item_emb.npy', item_embs)
+                prev_rec = ret['recall'][0]
 
         cur_best_pre_0, stopping_step, should_stop = early_stopping(ret['recall'][0], cur_best_pre_0,
                                                                     stopping_step, expected_order='acc', flag_step=10)
