@@ -445,12 +445,12 @@ if __name__ == '__main__':
     """
     saver = tf.train.Saver()
 
-    if args.save_flag == 1:
-        layer = '-'.join([str(l) for l in eval(args.layer_size)])
-        weights_save_path = '%sweights/%s/%s/%s/l%s_r%s' % (args.weights_path, args.dataset, model.model_type, layer,
-                                                            str(args.lr), '-'.join([str(r) for r in eval(args.regs)]))
-        ensureDir(weights_save_path)
-        save_saver = tf.train.Saver(max_to_keep=1)
+    #if args.save_flag == 1:
+    #    layer = '-'.join([str(l) for l in eval(args.layer_size)])
+    #    weights_save_path = '%sweights/%s/%s/%s/l%s_r%s' % (args.weights_path, args.dataset, model.model_type, layer,
+    #                                                        str(args.lr), '-'.join([str(r) for r in eval(args.regs)]))
+    #    ensureDir(weights_save_path)
+    #    save_saver = tf.train.Saver(max_to_keep=1)
 
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
@@ -597,9 +597,9 @@ if __name__ == '__main__':
 
         # *********************************************************
         # save the user & item embeddings for pretraining.
-        if ret['recall'][0] == cur_best_pre_0 and args.save_flag == 1:
-            save_saver.save(sess, weights_save_path + '/weights', global_step=epoch)
-            print('save the weights in path: ', weights_save_path)
+        #if ret['recall'][0] == cur_best_pre_0 and args.save_flag == 1:
+        #    save_saver.save(sess, weights_save_path + '/weights', global_step=epoch)
+        #    print('save the weights in path: ', weights_save_path)
 
     recs = np.array(rec_loger)
     pres = np.array(pre_loger)
@@ -616,12 +616,12 @@ if __name__ == '__main__':
                   '\t'.join(['%.5f' % r for r in ndcgs[idx]]))
     print(final_perf)
 
-    save_path = '%soutput/%s/%s.result' % (args.proj_path, args.dataset, model.model_type)
-    ensureDir(save_path)
-    f = open(save_path, 'a')
+    #save_path = '%soutput/%s/%s.result' % (args.proj_path, args.dataset, model.model_type)
+    #ensureDir(save_path)
+    #f = open(save_path, 'a')
 
-    f.write(
-        'embed_size=%d, lr=%.4f, layer_size=%s, node_dropout=%s, mess_dropout=%s, regs=%s, adj_type=%s\n\t%s\n'
-        % (args.embed_size, args.lr, args.layer_size, args.node_dropout, args.mess_dropout, args.regs,
-           args.adj_type, final_perf))
-    f.close()
+    #f.write(
+    #    'embed_size=%d, lr=%.4f, layer_size=%s, node_dropout=%s, mess_dropout=%s, regs=%s, adj_type=%s\n\t%s\n'
+    #    % (args.embed_size, args.lr, args.layer_size, args.node_dropout, args.mess_dropout, args.regs,
+    #       args.adj_type, final_perf))
+    #f.close()

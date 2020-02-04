@@ -61,6 +61,8 @@ def parse_args():
                         help='sub-version for appnp')
     parser.add_argument('--cgan_weight', type=float, default=1e-3,
                         help='weight for cgan')
+    parser.add_argument('--cgan_cycle', type=bool, default=False,
+                        help='use cycle loss for cgan')
 
     parser.add_argument('--gpu_ids', type=str, default='0',
                         help='0 for NAIS_prod, 1 for NAIS_concat')

@@ -128,16 +128,15 @@ def _init_weights(pretrain_data, n_users, n_items, n_layers):
                     initializer([args.embed_size, args.embed_size]), name='W_gc_%d' % k)
     elif args.alg_type == 'cgan':
         for k in range(args.n_head):
-            weight_size_list = [args.embed_size] + eval(args.layer_size)
             all_weights['W_gc_%d' % k] = tf.Variable(
-                initializer([weight_size_list[k], weight_size_list[k + 1]]), name='W_gc_%d' % k)
+                initializer([args.embed_size, args.embed_size]), name='W_gc_%d' % k)
             all_weights['b_gc_%d' % k] = tf.Variable(
-                initializer([1, weight_size_list[k + 1]]), name='b_gc_%d' % k)
+                initializer([1, args.embed_size]), name='b_gc_%d' % k)
 
             all_weights['W_bi_%d' % k] = tf.Variable(
-                initializer([weight_size_list[k], weight_size_list[k + 1]]), name='W_bi_%d' % k)
+                initializer([args.embed_size, args.embed_size]), name='W_bi_%d' % k)
             all_weights['b_bi_%d' % k] = tf.Variable(
-                initializer([1, weight_size_list[k + 1]]), name='b_bi_%d' % k)
+                initializer([1, args.embed_size]), name='b_bi_%d' % k)
         for k in range(args.n_head):
             all_weights['Wu_%d' % k] = tf.Variable(
                 initializer([args.embed_size, args.embed_size]), name='Wu_%d' % k)
@@ -485,6 +484,27 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
         return u_g_embeddings, i_g_embeddings
     elif args.sub_version == 1.223:
         # recall=[0.17556	0.24601	0.29704	0.33656	0.36889], ndcg=[0.23959	0.28060	0.30688	0.32617	0.34146]
+        #recall = [0.14178    0.19657    0.23651    0.26712    0.29232], ndcg = [0.21865    0.25413    0.27695    0.29325 0.30634]
+        if args.node_dropout_flag:
+            A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
+        else:
+            A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
+        ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
+        all_embeddings = [ego_embeddings]
+        for k in range(0, n_layers):
+            temp_embed = []
+            for f in range(n_fold):
+                temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
+            side_embeddings = tf.concat(temp_embed, 0)
+            for j in range(args.n_head):
+                ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % j]) #+ weights['b_gc_%d' % j]
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                # norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [ego_embeddings]
+        all_embeddings = tf.concat(all_embeddings, 1)
+        u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
+        return u_g_embeddings, i_g_embeddings
+    elif args.sub_version == 1.224:
         if args.node_dropout_flag:
             A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
         else:
@@ -504,13 +524,13 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
         all_embeddings = tf.concat(all_embeddings, 1)
         u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
         return u_g_embeddings, i_g_embeddings
-    elif args.sub_version == 1.224:
+    elif args.sub_version == 1.2241:
         if args.node_dropout_flag:
             A_fold_hat = _split_A_hat_node_dropout(norm_adj, node_dropout, n_fold, n_users, n_items)
         else:
             A_fold_hat = _split_A_hat(norm_adj, n_fold, n_users, n_items)
         ego_embeddings = tf.concat([weights['user_embedding'], weights['item_embedding']], axis=0)
-        all_embeddings = [1.5*ego_embeddings]
+        all_embeddings = [ego_embeddings]
         for k in range(0, n_layers):
             temp_embed = []
             for f in range(n_fold):
@@ -518,9 +538,9 @@ def _create_ngcf_embed(norm_adj, weights, mess_dropout, node_dropout, n_layers, 
             side_embeddings = tf.concat(temp_embed, 0)
             for j in range(args.n_head):
                 ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % j]) #+ weights['b_gc_%d' % j]
-                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
-                norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
-                all_embeddings += [norm_embeddings]
+                ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                # norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
+                all_embeddings += [ego_embeddings]
         all_embeddings = tf.concat(all_embeddings, 1)
         u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [n_users, n_items], 0)
         return u_g_embeddings, i_g_embeddings
@@ -1094,6 +1114,36 @@ def _create_cycle_gan_loss(users, pos_items, neg_items, hiddnes, all_weights):
             gan_loss += (real_loss + fake_loss) / 2
     return gan_loss, 0
 
+def _create_cycle_gan_loss_c(users, pos_items, neg_items, hiddnes, all_weights):
+    gan_loss, cycle_loss = None, None
+    # for rusers, ritems, fusers, fitems in hiddnes:
+    for rusers, ritems, fusers, fitems in hiddnes:
+        real_users = tf.nn.embedding_lookup(rusers, users)
+        real_poses = tf.nn.embedding_lookup(ritems, pos_items)
+        real_negs = tf.nn.embedding_lookup(ritems, neg_items)
+        fake_pos_users = tf.nn.embedding_lookup(fusers, pos_items)
+        fake_neg_users = tf.nn.embedding_lookup(fusers, neg_items)
+        fake_items = tf.nn.embedding_lookup(fitems, users)
+
+        real_loss = tf.reduce_mean(tf.squared_difference(cgan_discriminator(fake_pos_users, all_weights, domain='u'), 0.9)) \
+                    + tf.reduce_mean(tf.squared_difference(cgan_discriminator(fake_neg_users, all_weights, domain='u'), 0.9)) \
+                    + tf.reduce_mean(tf.squared_difference(cgan_discriminator(fake_items, all_weights, domain='u'), 0.9))
+        fake_loss = tf.reduce_mean(tf.square(cgan_discriminator(real_users, all_weights, domain='u'))) \
+                    + tf.reduce_mean(tf.square(cgan_discriminator(real_poses, all_weights, domain='u'))) \
+                    + tf.reduce_mean(tf.square(cgan_discriminator(real_negs, all_weights, domain='u')))
+        if gan_loss is None:
+            gan_loss = (real_loss + fake_loss) / 2
+        else:
+            gan_loss += (real_loss + fake_loss) / 2
+        cycle_users_loss = tf.reduce_mean(tf.abs(cgan_generator(fake_items, all_weights, direction='vu') - real_users))
+        cycle_poses_loss = tf.reduce_mean(tf.abs(cgan_generator(fake_pos_users, all_weights, direction='uv') - real_poses))
+        cycle_negs_loss = tf.reduce_mean(tf.abs(cgan_generator(fake_neg_users, all_weights, direction='uv') - real_negs))
+        if cycle_loss is None:
+            cycle_loss = cycle_users_loss + cycle_poses_loss + cycle_negs_loss
+        else:
+            cycle_loss += cycle_users_loss + cycle_poses_loss + cycle_negs_loss
+    return gan_loss, cycle_loss
+
 def _create_cgan_embed(config, mess_dropout, weights, n_layers, n_fold, n_users, n_items):
     adj_user, adj_item = config['adj_user'], config['adj_item']
     if args.sub_version == 4.0: # bige version of v1.2
@@ -1216,8 +1266,8 @@ def _create_cgan_embed(config, mess_dropout, weights, n_layers, n_fold, n_users,
                 temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
             side_embeddings = tf.concat(temp_embed, 0)
             for j in range(args.n_head):
-                ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % j])# + weights['b_gc_%d' % j]
-                ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
+                ego_embeddings = tf.matmul(side_embeddings, weights['W_gc_%d' % j]) + weights['b_gc_%d' % j]
+                # ego_embeddings = tf.nn.dropout(ego_embeddings, 1 - mess_dropout[k])
                 norm_embeddings = tf.math.l2_normalize(ego_embeddings, axis=1)
                 all_embeddings += [norm_embeddings]
         all_embeddings = tf.concat(all_embeddings, 1)
@@ -1398,7 +1448,11 @@ def build_model(data_config, pretrain_data):
 
     mf_loss, emb_loss, reg_loss = _create_bpr_loss(u_g_embeddings, pos_i_g_embeddings, neg_i_g_embeddings, decay)
     if args.alg_type == 'cgan':
-        gan_loss, cycle_loss = _create_cycle_gan_loss(users, pos_items, neg_items, hiddens, weights)
+        if args.cgan_cycle:
+            print(">>> Using cgan cycle loss")
+            gan_loss, cycle_loss = _create_cycle_gan_loss_c(users, pos_items, neg_items, hiddens, weights)
+        else:
+            gan_loss, cycle_loss = _create_cycle_gan_loss(users, pos_items, neg_items, hiddens, weights)
         loss = mf_loss + emb_loss + reg_loss + args.cgan_weight * (gan_loss + 10 * cycle_loss)
     else:
         loss = mf_loss + emb_loss + reg_loss
@@ -1563,8 +1617,8 @@ if __name__ == '__main__':
             sys.exit()
 
         # print the test evaluation metrics each 10 epochs; pos:neg = 1:10.
-        # if (epoch + 1) % 10 != 0 or epoch < 100:
-        if ((epoch + 1) % 10 != 0 and (epoch < 570 or epoch > 590)) or epoch < 100:
+        if (epoch + 1) % 10 != 0 or epoch < 400:
+        # if ((epoch + 1) % 10 != 0 and (epoch < 570 or epoch > 590)) or epoch < 100:
             if args.verbose > 0 and epoch % args.verbose == 0:
                 perf_str = 'Epoch %d [%.1fs]: train==[%.5f=%.5f + %.5f]' % (
                     epoch, time() - t1, loss, mf_loss, reg_loss)
@@ -1596,7 +1650,7 @@ if __name__ == '__main__':
             print(perf_str)
 
         cur_best_pre_0, stopping_step, should_stop = early_stopping(ret['recall'][0], cur_best_pre_0,
-                                                                    stopping_step, expected_order='acc', flag_step=5)
+                                                                    stopping_step, expected_order='acc', flag_step=10)
 
         # *********************************************************
         # early stopping when cur_best_pre_0 is decreasing for ten successive steps.
