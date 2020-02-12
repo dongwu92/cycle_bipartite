@@ -535,6 +535,7 @@ if __name__ == '__main__':
     loss_loger, pre_loger, rec_loger, ndcg_loger, hit_loger = [], [], [], [], []
     stopping_step = 0
     should_stop = False
+    prev_rec = 0
 
     for epoch in range(args.epoch):
         t1 = time()
@@ -560,7 +561,7 @@ if __name__ == '__main__':
             sys.exit()
 
         # print the test evaluation metrics each 10 epochs; pos:neg = 1:10.
-        if (epoch + 1) % 10 != 0:
+        if (epoch + 1) % 10 != 0 or epoch < 100:
             if args.verbose > 0 and epoch % args.verbose == 0:
                 perf_str = 'Epoch %d [%.1fs]: train==[%.5f=%.5f + %.5f]' % (
                     epoch, time() - t1, loss, mf_loss, reg_loss)
@@ -586,6 +587,15 @@ if __name__ == '__main__':
                         ret['precision'][0], ret['precision'][-1], ret['hit_ratio'][0], ret['hit_ratio'][-1],
                         ret['ndcg'][0], ret['ndcg'][-1])
             print(perf_str)
+
+        if ret['recall'][0] > prev_rec:
+            user_embs = sess.run(model.weights['user_embedding'])
+            item_embs = sess.run(model.weights['item_embedding'])
+            np.save('weights/' + args.dataset + '_' + args.alg_type + '_' + args.adj_type + '_' + str(
+                args.sub_version) + '_user_emb.npy', user_embs)
+            np.save('weights/' + args.dataset + '_' + args.alg_type + '_' + args.adj_type + '_' + str(
+                args.sub_version) + '_item_emb.npy', item_embs)
+            prev_rec = ret['recall'][0]
 
         cur_best_pre_0, stopping_step, should_stop = early_stopping(ret['recall'][0], cur_best_pre_0,
                                                                     stopping_step, expected_order='acc', flag_step=5)

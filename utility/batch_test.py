@@ -73,12 +73,10 @@ def get_performance(user_pos_test, r, auc, Ks):
     precision, recall, ndcg, hit_ratio = [], [], [], []
 
     for K in Ks:
-        # precision.append(metrics.precision_at_k(r, K))
-        precision.append(0)
+        precision.append(metrics.precision_at_k(r, K))
         recall.append(metrics.recall_at_k(r, K, len(user_pos_test)))
         ndcg.append(metrics.ndcg_at_k(r, K))
-        # hit_ratio.append(metrics.hit_at_k(r, K))
-        hit_ratio.append(0)
+        hit_ratio.append(metrics.hit_at_k(r, K))
 
     return {'recall': np.array(recall), 'precision': np.array(precision),
             'ndcg': np.array(ndcg), 'hit_ratio': np.array(hit_ratio), 'auc': auc}
@@ -120,6 +118,8 @@ def test(sess, placehodlers, batch_ratings, users_to_test, drop_flag=False, batc
         u_batch_size = BATCH_SIZE // 4
     else:
         u_batch_size = BATCH_SIZE // 4
+    if args.dataset == 'amazon-book':
+        u_batch_size = BATCH_SIZE // 16
     i_batch_size = BATCH_SIZE
 
     test_users = users_to_test
